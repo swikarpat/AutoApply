@@ -1,0 +1,30 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# OS Artifacts
+.DS_Store
+Thumbs.db
+
+# Sensitive & Session Data (NEVER COMMIT)
+data/
+*.pdf
+*.db
+*.sqlite3
+.env
+.env.local
+
+# Private Identity & Truth Matrix
+config/truth_matrix.yaml
+
+# Playwright Browser Artifacts
+data/browser_profile/
+test-results/
+playwright-report/

@@ -1,0 +1,24 @@
+candidate:
+  full_name: "Your Name"
+  first_name: "Your"
+  last_name: "Name"
+  email: "your.email@example.com"
+  phone: "+1 (555) 000-0000"
+  city: "San Francisco"
+  state: "California"
+  location_query: "San Francisco, California"
+  postal_code: "94105"
+  linkedin: "https://linkedin.com/in/yourprofile"
+  github: "https://github.com/yourprofile"
+  current_title: "Staff Software Engineer"
+  years_of_experience: 6
+
+compliance_and_work_auth:
+  us_work_authorization: true
+  requires_visa_sponsorship_now_or_future: false
+  authorized_to_work_in_us: true
+  willing_to_commute_hybrid: true
+
+compensation:
+  target_base_salary_min_usd: 220000
+  notice_period_weeks: 2
