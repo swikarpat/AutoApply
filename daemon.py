@@ -2,6 +2,7 @@ import os
 import re
 import yaml
 import asyncio
+import urllib.parse
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -19,66 +20,166 @@ class LinkedInStreamApplier:
         self.pdf_path = os.path.abspath(settings["resume_attachment"]["master_pdf_path"])
         self.auto_submit = settings["automation_safety"].get("auto_submit", True)
         self.step_delay = settings["automation_safety"].get("step_inspection_delay_seconds", 3.0)
+        self.filters = settings.get("company_filters", {})
+        self.search_cfg = settings.get("job_search", {})
 
     def _resolve_answer(self, text: str, is_textarea: bool = False) -> str:
         q = text.lower()
-        c = self.truth["candidate"]
+        c = self.truth.get("candidate", {})
         comp = self.truth.get("compensation", {})
+        skills = self.truth.get("skills_experience_years", {})
+        edu = self.truth.get("education", {})
 
-        # Experience -> Configured Years
-        if any(k in q for k in ["how many years", "years of experience", "years", "experience"]):
-            return str(c.get("years_of_experience", 6))
-        
-        # Notice Period -> Configured Weeks
+        # Block Referrer Name Field
+        if any(k in q for k in ["referred by", "employee name", "referrer", "who referred"]):
+            return ""
+
+        # Specific Skill Years Mapping
+        if any(k in q for k in ["how many years", "years of experience", "years of work", "years"]):
+            for skill_key, years in skills.items():
+                clean_key = skill_key.replace("_", " ")
+                if clean_key in q:
+                    return str(years)
+            return str(skills.get("default_years", 6))
+
+        # Work Logistics & Notice
         if "notice" in q:
-            return str(comp.get("notice_period_weeks", 2))
-        
+            if "day" in q:
+                return str(comp.get("notice_period_days", 5))
+            return str(comp.get("notice_period_weeks", 1))
+
         # Compensation
         if any(k in q for k in ["salary", "compensation", "pay", "expectation", "remuneration"]):
-            return str(comp.get("target_base_salary_min_usd", 220000))
-        
-        # Identity Details from truth_matrix
+            if "hour" in q:
+                return str(comp.get("target_hourly_rate_usd", 65))
+            return str(comp.get("target_base_salary_min_usd", 120000))
+
+        # Education
+        if "gpa" in q:
+            return str(edu.get("gpa", "3.8"))
+        if "school" in q or "university" in q:
+            return edu.get("school", "James Cook University")
+        if "degree" in q:
+            return edu.get("degree", "Bachelor of Science")
+        if "major" in q or "field of study" in q:
+            return edu.get("field_of_study", "Computer Science")
+
+        # Identity Details
         if "first name" in q:
-            return c["first_name"]
+            return c.get("first_name", "Swikar")
         if "last name" in q:
-            return c["last_name"]
+            return c.get("last_name", "Patel")
         if "phone" in q or "mobile" in q:
-            return c["phone"]
+            return c.get("phone", "9514631792")
         if "email" in q:
-            return c["email"]
+            return c.get("email", "swikar.aus@gmail.com")
         if "linkedin" in q:
-            return c["linkedin"]
+            return c.get("linkedin", "")
         if "github" in q:
-            return c["github"]
+            return c.get("github", "")
         if "postal" in q or "zip" in q:
             return c.get("postal_code", "94105")
-        
+
+        # Textarea Essays
         if is_textarea:
-            return "I bring over 6 years of enterprise experience architecting distributed systems and production AI."
-        
-        return str(c.get("years_of_experience", 6))
+            essays = self.truth.get("canned_essays", {})
+            if any(k in q for k in ["why", "interest", "cover"]):
+                return essays.get("why_interested", "I bring extensive experience architecting distributed systems and production AI.")
+            return essays.get("summary", "Staff AI & Distributed Systems Engineer with 6+ years building high-throughput microservices.")
+
+        return str(skills.get("default_years", 6))
+
+    async def evaluate_job_eligibility(self) -> tuple[bool, str]:
+        try:
+            job_meta = await self.page.evaluate(
+                """() => {
+                    const topCard = document.querySelector('.jobs-details__main-content, .job-view-layout, .job-details-jobs-unified-top-card')?.innerText || '';
+                    const aboutCompany = document.querySelector('.jobs-company, .artdeco-card')?.innerText || '';
+                    const locationHeader = document.querySelector('.job-details-jobs-unified-top-card__bullet, .jobs-unified-top-card__bullet')?.innerText || '';
+                    
+                    return {
+                        full_text: (topCard + ' ' + aboutCompany).toLowerCase(),
+                        location: locationHeader.toLowerCase()
+                    };
+                }"""
+            )
+            raw = job_meta.get("full_text", "")
+            location_text = job_meta.get("location", "")
+
+            # 1. California Exclusion Filter
+            if self.search_cfg.get("exclude_california", False):
+                ca_indicators = [
+                    "california", ", ca", "ca,", "san francisco", "bay area", 
+                    "los angeles", "san jose", "san diego", "sunnyvale", 
+                    "mountain view", "palo alto", "menlo park", "cupertino", 
+                    "fremont", "oakland", "santa clara", "irvine"
+                ]
+                if any(ind in location_text for ind in ca_indicators) or any(ind in raw[:400] for ind in ca_indicators):
+                    return False, "Excluded Region: California / Bay Area job posting"
+
+            # 2. Excluded Industries / Agencies
+            excluded = self.filters.get("excluded_industries", [])
+            for ind in excluded:
+                if ind.lower() in raw:
+                    return False, f"Excluded Industry Match: '{ind}'"
+
+            # 3. Public Company Only
+            if self.filters.get("public_company_only", True):
+                if "privately held" in raw or "private" in raw:
+                    if "public company" not in raw:
+                        return False, "Non-Public Company (Privately Held)"
+
+            # 4. Employee Count > 200
+            small_company_signatures = ["1-10 employees", "11-50 employees", "51-200 employees", "2-10 employees"]
+            for sig in small_company_signatures:
+                if sig in raw:
+                    return False, f"Company size too small ({sig})"
+
+            return True, "Eligible (Public, >200 Employees)"
+        except Exception as e:
+            return True, f"Inspection pass ({str(e)})"
 
     async def _handle_location(self, input_loc: Locator):
         target_location = self.truth["candidate"].get("location_query", "San Francisco, California")
         try:
             await input_loc.click()
             await input_loc.fill("")
-            await self.page.keyboard.type(target_location, delay=35)
+            await self.page.keyboard.press("Meta+A")
+            await self.page.keyboard.press("Backspace")
+            await input_loc.press_sequentially(target_location, delay=35)
             await asyncio.sleep(0.8)
-            sugg = self.page.locator('.artdeco-typeahead__result, div[role="option"]').first
+            
+            sugg = self.page.locator('.artdeco-typeahead__result, div[role="option"], .basic-typeahead__selectable-result').first
             if await sugg.is_visible():
                 await sugg.click()
             else:
                 await self.page.keyboard.press("ArrowDown")
                 await self.page.keyboard.press("Enter")
-            console.print(f"    [dim]↳ Location Autocomplete:[/dim] [cyan]{target_location}[/cyan]")
             await asyncio.sleep(0.3)
         except Exception:
             pass
 
+    async def _uncheck_follow_company(self, modal: Locator):
+        try:
+            await self.page.evaluate("""() => {
+                const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+                for (const chk of checkboxes) {
+                    const labelText = (chk.closest('label')?.innerText || chk.parentElement?.innerText || chk.id || '').toLowerCase();
+                    if (labelText.includes('follow') || chk.id.includes('follow')) {
+                        if (chk.checked) {
+                            chk.click();
+                            chk.checked = false;
+                            chk.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                }
+            }""")
+        except Exception:
+            pass
+
     async def fill_modal_step(self, modal: Locator, step_num: int):
-        table = Table(title=f"Step {step_num} - Form Fields Inspected", show_header=True, header_style="bold magenta")
-        table.add_column("Field / Question", style="dim", width=45)
+        table = Table(title=f"Step {step_num} - Form Fields Filled", show_header=True, header_style="bold magenta")
+        table.add_column("Question / Field", style="dim", width=45)
         table.add_column("Value Injected", style="green", width=35)
         has_entries = False
 
@@ -91,7 +192,7 @@ class LinkedInStreamApplier:
                 if not await inp.is_visible():
                     continue
                 curr = await inp.input_value()
-                
+
                 label_text = await self.page.evaluate(
                     """(el) => {
                         const parent = el.closest('.jobs-easy-apply-form-section__grouping, .fb-dash-form-element, .artdeco-text-input, div');
@@ -101,15 +202,19 @@ class LinkedInStreamApplier:
                 )
                 combined = label_text.lower()
 
-                # Location handling
+                # Location Correction
                 if any(k in combined for k in ["city", "location"]):
-                    if not curr or len(curr.strip()) < 2:
+                    target_loc = self.truth["candidate"].get("location_query", "San Francisco, California")
+                    if not curr or "philippines" in curr.lower() or "manila" in curr.lower() or target_loc.split(',')[0].lower() not in curr.lower():
                         await self._handle_location(inp)
-                        table.add_row("Location (City)", self.truth["candidate"].get("location_query", "San Francisco, CA"))
+                        table.add_row("City / Location", target_loc)
                         has_entries = True
                     continue
 
-                # Phone Number Override Check
+                if any(k in combined for k in ["referred by", "employee name", "referrer", "who referred"]):
+                    await inp.fill("")
+                    continue
+
                 if ("phone" in combined or "mobile" in combined) and (not curr or "0000" in curr):
                     real_phone = self.truth["candidate"]["phone"]
                     await inp.fill(real_phone)
@@ -119,7 +224,7 @@ class LinkedInStreamApplier:
 
                 is_ta = (await inp.get_attribute("type")) == "textarea" or (await self.page.evaluate("el => el.tagName", await inp.element_handle())) == "TEXTAREA"
                 val = self._resolve_answer(combined, is_textarea=is_ta)
-                
+
                 if val and (not curr or curr.strip() == ""):
                     await inp.fill(str(val))
                     table.add_row(label_text.split('\n')[0][:40], str(val))
@@ -139,7 +244,19 @@ class LinkedInStreamApplier:
 
                 txt = (await fs.inner_text()).lower()
 
-                if "sponsorship" in txt or "visa" in txt:
+                if "hispanic" in txt or "latino" in txt:
+                    no_r = fs.locator('label:has-text("No"), input[value="No"]').first
+                    if await no_r.is_visible():
+                        await no_r.click(force=True)
+                        table.add_row("Hispanic or Latino", "No")
+                        has_entries = True
+                elif any(k in txt for k in ["referred by", "internal employee", "referral"]):
+                    no_r = fs.locator('label:has-text("No"), input[value="No"]').first
+                    if await no_r.is_visible():
+                        await no_r.click(force=True)
+                        table.add_row("Employee Referral", "No")
+                        has_entries = True
+                elif "sponsorship" in txt or "visa" in txt:
                     no_r = fs.locator('label:has-text("No"), input[value="No"]').first
                     if await no_r.is_visible():
                         await no_r.click(force=True)
@@ -149,7 +266,7 @@ class LinkedInStreamApplier:
                     yes_r = fs.locator('label:has-text("Yes"), input[value="Yes"]').first
                     if await yes_r.is_visible():
                         await yes_r.click(force=True)
-                        table.add_row("Legally Authorized to Work", "Yes")
+                        table.add_row("Authorized to Work", "Yes")
                         has_entries = True
                 elif any(k in txt for k in ["disability", "veteran", "gender", "race", "ethnic", "equal opportunity", "armed forces"]):
                     decline_r = fs.locator(
@@ -160,26 +277,32 @@ class LinkedInStreamApplier:
                     ).first
                     if await decline_r.is_visible():
                         await decline_r.click(force=True)
-                        table.add_row("Demographic / EEO Survey", "I don't wish to answer / No")
+                        table.add_row("Demographic / EEO", "Decline / No")
                         has_entries = True
                     else:
                         first_r = fs.locator('label, input[type="radio"]').first
                         if await first_r.is_visible():
                             await first_r.click(force=True)
                 else:
-                    first_r = fs.locator('label:has-text("Yes"), label:has-text("No"), label').first
-                    if await first_r.is_visible():
-                        await first_r.click(force=True)
-                        table.add_row("General Radio Question", "Selected Option")
+                    no_fallback = fs.locator('label:has-text("No"), input[value="No"]').first
+                    if await no_fallback.is_visible():
+                        await no_fallback.click(force=True)
+                        table.add_row("Question Option", "No")
                         has_entries = True
+                    else:
+                        first_r = fs.locator('label, input[type="radio"]').first
+                        if await first_r.is_visible():
+                            await first_r.click(force=True)
             except Exception:
                 continue
 
-        # 3. Dropdown Options Match
+        # 3. Dynamic Dropdowns
+        target_salary = self.truth.get("compensation", {}).get("target_base_salary_min_usd", 120000)
         await self.page.evaluate(
-            """() => {
+            f"""() => {{
+                const targetSalary = {target_salary};
                 const selects = Array.from(document.querySelectorAll('select'));
-                for (const sel of selects) {
+                for (const sel of selects) {{{{
                     if (sel.offsetParent === null) continue;
                     
                     const parentText = (sel.closest('.jobs-easy-apply-form-section__grouping, .fb-dash-form-element, div')?.innerText || '').toLowerCase();
@@ -187,33 +310,53 @@ class LinkedInStreamApplier:
                     const selectedIdx = sel.selectedIndex;
                     const currentText = selectedIdx >= 0 ? options[selectedIdx].text.toLowerCase() : '';
 
-                    if (currentText.includes('select an option') || currentText === '' || sel.value === '') {
+                    if (currentText.includes('select an option') || currentText === '' || sel.value === '') {{{{
                         let targetIdx = -1;
 
-                        if (parentText.includes('authorized') || parentText.includes('hybrid') || parentText.includes('commute') || parentText.includes('willing')) {
-                            targetIdx = options.findIndex(o => o.text.toLowerCase().startsWith('yes'));
-                        } else if (parentText.includes('sponsorship') || parentText.includes('visa')) {
+                        if (parentText.includes('hispanic') || parentText.includes('latino')) {{{{
                             targetIdx = options.findIndex(o => o.text.toLowerCase().startsWith('no'));
-                        } else if (parentText.includes('disability') || parentText.includes('veteran') || parentText.includes('gender')) {
-                            targetIdx = options.findIndex(o => o.text.toLowerCase().includes('wish to answer') || o.text.toLowerCase().includes('decline'));
-                        }
-
-                        if (targetIdx === -1) {
+                        }}}} else if (parentText.includes('referred') || parentText.includes('internal employee')) {{{{
+                            targetIdx = options.findIndex(o => o.text.toLowerCase().startsWith('no'));
+                        }}}} else if (parentText.includes('authorized') || parentText.includes('hybrid') || parentText.includes('commute') || parentText.includes('willing') || parentText.includes('relocate')) {{{{
                             targetIdx = options.findIndex(o => o.text.toLowerCase().startsWith('yes'));
-                        }
-                        if (targetIdx === -1 && options.length > 1) {
-                            targetIdx = 1;
-                        }
+                        }}}} else if (parentText.includes('sponsorship') || parentText.includes('visa')) {{{{
+                            targetIdx = options.findIndex(o => o.text.toLowerCase().startsWith('no'));
+                        }}}} else if (parentText.includes('salary') || parentText.includes('compensation') || parentText.includes('expectation')) {{{{
+                            for (let i = 0; i < options.length; i++) {{{{
+                                const optText = options[i].text.replace(/,/g, '');
+                                const nums = optText.match(/\\d+/g);
+                                if (nums && nums.length > 0) {{{{
+                                    const maxVal = Math.max(...nums.map(Number));
+                                    const realVal = maxVal < 1000 ? maxVal * 1000 : maxVal;
+                                    if (realVal >= targetSalary) {{{{
+                                        targetIdx = i;
+                                        break;
+                                    }}}}
+                                }}}}
+                            }}}}
+                            if (targetIdx === -1) targetIdx = options.length - 1;
+                        }}}} else if (parentText.includes('disability') || parentText.includes('veteran') || parentText.includes('gender')) {{{{
+                            targetIdx = options.findIndex(o => o.text.toLowerCase().includes('wish to answer') || o.text.toLowerCase().includes('decline') || o.text.toLowerCase().startsWith('no'));
+                        }}}}
 
-                        if (targetIdx !== -1) {
+                        if (targetIdx === -1) {{{{
+                            targetIdx = options.findIndex(o => o.text.toLowerCase().startsWith('yes'));
+                        }}}}
+                        if (targetIdx === -1 && options.length > 1) {{{{
+                            targetIdx = 1;
+                        }}}}
+
+                        if (targetIdx !== -1) {{{{
                             sel.selectedIndex = targetIdx;
-                            sel.dispatchEvent(new Event('change', { bubbles: true }));
-                            sel.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    }
-                }
-            }"""
+                            sel.dispatchEvent(new Event('change', {{{{ bubbles: true }}}}));
+                            sel.dispatchEvent(new Event('input', {{{{ bubbles: true }}}}));
+                        }}}}
+                    }}}}
+                }}}}
+            }}"""
         )
+
+        await self._uncheck_follow_company(modal)
 
         if has_entries:
             console.print(table)
@@ -245,7 +388,12 @@ class LinkedInStreamApplier:
             console.print("  [yellow]Not an Easy Apply role (External). Skipping.[/yellow]")
             return False
 
-        console.print("  [green]Found Easy Apply button. Clicking...[/green]")
+        eligible, reason = await self.evaluate_job_eligibility()
+        if not eligible:
+            console.print(f"  [red]Filtered Out:[/red] {reason}")
+            return False
+
+        console.print(f"  [green]Job Verified ({reason}). Clicking Easy Apply...[/green]")
         await easy_apply_btn.click()
 
         modal = self.page.locator('div[role="dialog"].jobs-easy-apply-modal, div.jobs-easy-apply-modal, #artdeco-modal-outlet .artdeco-modal, div[role="dialog"]').first
@@ -275,7 +423,6 @@ class LinkedInStreamApplier:
 
                 await self.fill_modal_step(modal, step)
 
-                # Scroll down modal
                 try:
                     await self.page.evaluate("""() => {
                         const content = document.querySelector('.jobs-easy-apply-modal__content, .artdeco-modal__content');
@@ -284,29 +431,23 @@ class LinkedInStreamApplier:
                 except Exception:
                     pass
 
-                # Inspection Pause: Allows you to see what was filled
+                await self._uncheck_follow_company(modal)
+
                 console.print(f"  [dim]Inspecting step {step}... Pausing {self.step_delay}s...[/dim]")
                 await asyncio.sleep(self.step_delay)
 
-                # Check Submit Button
+                # Check Final Submit
                 submit_btn = modal.locator('button[aria-label="Submit application"], button:has-text("Submit application")').first
                 if await submit_btn.is_visible():
+                    await self._uncheck_follow_company(modal)
                     if self.auto_submit:
-                        follow_chk = modal.locator('label[for="follow-company-checkbox"]').first
-                        if await follow_chk.is_visible():
-                            try:
-                                await follow_chk.click()
-                            except Exception:
-                                pass
                         console.print("  [bold green]Clicking Final 'Submit application'![/bold green]")
                         await submit_btn.click(force=True)
                         await asyncio.sleep(3.0)
                         submitted = True
-                    else:
-                        console.print("[bold yellow]Review complete. Ready for manual submit in browser.[/bold yellow]")
                     break
 
-                # Click Next / Review Button
+                # Click Next / Review
                 next_btn = modal.locator(
                     'button[aria-label="Review your application"], '
                     'button[aria-label="Continue to next step"], '
@@ -320,7 +461,6 @@ class LinkedInStreamApplier:
                     await next_btn.click(force=True)
                     await asyncio.sleep(0.8)
 
-                    # Error Recovery
                     err = modal.locator('.artdeco-inline-feedback--error, .fb-form-element--error').first
                     if await err.is_visible():
                         await self.fill_modal_step(modal, step)
@@ -347,7 +487,7 @@ async def ensure_linkedin_login(page: Page):
 
 
 async def main():
-    console.print(Panel("[bold green]STARTING IN-SEARCH LINKEDIN STREAM APPLIER (INSPECTION MODE)[/bold green]"))
+    console.print(Panel("[bold green]STARTING RECENT-FIRST MULTI-ROLE LINKEDIN APPLIER[/bold green]"))
 
     with open("config/settings.yaml", "r") as f:
         settings = yaml.safe_load(f)
@@ -364,16 +504,36 @@ async def main():
         page = await browser.get_page("https://www.linkedin.com/jobs/")
         await ensure_linkedin_login(page)
 
-        search_url = "https://www.linkedin.com/jobs/search/?keywords=Staff%20Software%20Engineer&location=San%20Francisco%20Bay%20Area&f_AL=true&sortBy=R"
-        console.print(f"[cyan]Navigating to LinkedIn Search Stream:[/cyan] {search_url}")
+        # 1. Build Multi-Role Boolean Query
+        titles = settings["job_search"].get("target_titles", ["Staff Software Engineer"])
+        boolean_query = " OR ".join([f'"{t}"' for t in titles])
+        loc = settings["job_search"].get("target_location", "United States")
         
+        # 2. Build URL with Recency Sorting (sortBy=DD) & Time Range (f_TPR)
+        params = {
+            "keywords": boolean_query,
+            "location": loc,
+            "f_AL": "true",
+            "sortBy": "DD" if settings["job_search"].get("sort_by_recent_first", True) else "R"
+        }
+        
+        # Add Time Posted Filter (e.g. Past 24 Hours)
+        time_range = settings["job_search"].get("time_posted_range")
+        if time_range:
+            params["f_TPR"] = time_range
+
+        search_url = f"https://www.linkedin.com/jobs/search/?{urllib.parse.urlencode(params)}"
+        console.print(f"[cyan]Target Roles:[/cyan] [bold magenta]{', '.join(titles)}[/bold magenta]")
+        console.print(f"[cyan]Recency Sort:[/cyan] [bold green]Newest First (Past 24h / DD)[/bold green] | [cyan]Location:[/cyan] [bold green]{loc}[/bold green]")
+        console.print(f"[cyan]Navigating to LinkedIn Stream:[/cyan] {search_url}\n")
+
         await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
         await asyncio.sleep(2.5)
 
         applier = LinkedInStreamApplier(page, settings, truth)
 
         applied_total = 0
-        max_apps = 30
+        max_apps = settings["automation_safety"].get("max_applications_per_run", 30)
 
         card_locators = page.locator(
             'li[data-occludable-job-id], '
@@ -383,11 +543,11 @@ async def main():
         )
 
         total_cards = await card_locators.count()
-        console.print(f"[bold cyan]Found {total_cards} job cards in active search stream.[/bold cyan]\n")
+        console.print(f"[bold cyan]Found {total_cards} fresh job cards in active stream.[/bold cyan]\n")
 
         for idx in range(total_cards):
             if applied_total >= max_apps:
-                console.print(f"[yellow]Reached limit of {max_apps} applications.[/yellow]")
+                console.print(f"[yellow]Reached application limit ({max_apps}).[/yellow]")
                 break
 
             card = card_locators.nth(idx)
@@ -398,7 +558,7 @@ async def main():
 
                 card_title = (await card.inner_text()).split('\n')[0].strip()
                 console.print(f"[bold]─────────────────────────────────────────────────────────────────────────────[/bold]")
-                console.print(f"[bold yellow][{idx+1}/{total_cards}] Selecting:[/bold yellow] {card_title[:45]}")
+                console.print(f"[bold yellow][{idx+1}/{total_cards}] Inspecting Fresh Posting:[/bold yellow] {card_title[:50]}")
 
                 await card.click()
                 await asyncio.sleep(1.2)

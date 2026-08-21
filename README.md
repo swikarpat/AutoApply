@@ -2,6 +2,57 @@
 
 An autonomous, agentic LinkedIn job application engine designed to stream, evaluate, and submit LinkedIn "Easy Apply" applications end-to-end. Built with Playwright Async API, Google Gemini Flash, and deterministic heuristic fallback pipelines.
 
+flowchart TD
+    subgraph ConfigLayer ["1. Configuration & Truth Matrix"]
+        A1["config/settings.yaml<br/>(Target Roles, Exclude CA, Public Only, >200 Emp)"]
+        A2["config/truth_matrix.yaml<br/>(Profile, Skills Map, Comp, EEO, Work Auth)"]
+        A3["data/ResumeSoftwareEngineer.pdf<br/>(Locked Master Resume)"]
+    end
+
+    subgraph SearchEngine ["2. Search Stream & Discovery"]
+        B1["Query Generator<br/>Boolean Keyword Builder + sortBy=DD + f_TPR=r86400"]
+        B2["Stealth Browser (Playwright)<br/>Persistent Session / Login Auth Check"]
+        B3["Card Stream Consumer<br/>Zero-Reload In-Search Card Iterator"]
+    end
+
+    subgraph FilterPipeline ["3. Eligibility & Policy Gate"]
+        C1{"Location Filter<br/>Exclude CA / Bay Area?"}
+        C2{"Company Industry Filter<br/>Exclude Staffing / Agency / Consulting?"}
+        C3{"Size & Structure Filter<br/>Public Company & >200 Employees?"}
+        C4["Skip Card & Advance Stream"]
+    end
+
+    subgraph FormEngine ["4. Autonomous Modal Execution Engine"]
+        D1["Top-Card Easy Apply Trigger<br/>Hardware Click & Modal Outlet Mount"]
+        D2["Resume Uploader<br/>Direct PDF File Descriptor Injection"]
+        D3["Deterministic Field Matcher<br/>Skill Years Map, Notice, Comp, Location"]
+        D4["Radio Matrix & EEO Handler<br/>Work Auth: Yes | Visa: No | Hispanic: No | Ref: No"]
+        D5["Dynamic Dropdown Substring Matcher<br/>Salary Bracket Match & Native Event Dispatch"]
+        D6["Uncheck 'Follow Company' Interceptor"]
+        D7["Error Detection & Retry Loop"]
+    end
+
+    subgraph FinalizeLayer ["5. Review & State Store"]
+        E1["Final Submit / Manual Inspection Pause"]
+        E2[("data/applications.db<br/>Application SQLite State Store")]
+    end
+
+    %% Wiring
+    ConfigLayer --> SearchEngine
+    B1 --> B2 --> B3
+    B3 --> FilterPipeline
+    C1 -- Rejected --> C4
+    C2 -- Rejected --> C4
+    C3 -- Rejected --> C4
+    C1 -- Approved --> FormEngine
+    C2 -- Approved --> FormEngine
+    C3 -- Approved --> FormEngine
+    C4 --> B3
+    D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7
+    D7 --> FinalizeLayer
+    E1 --> E2
+    E1 --> B3
+
 ---
 
 ## Key Features

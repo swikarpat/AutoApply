@@ -1,7 +1,6 @@
 system:
   project_name: "agentic-job-ai"
   environment: "production"
-  log_level: "INFO"
   db_path: "data/applications.db"
 
 resume_attachment:
@@ -9,29 +8,43 @@ resume_attachment:
 
 llm_routing:
   provider: "gemini"
-  model: "gemini-2.5-flash"
+  model: "gemini-3.7-flash"
   temperature: 0.1
-  request_timeout_seconds: 15.0
-
-matching_thresholds:
-  min_fit_score: 75
-  hard_filter_location: "San Francisco, CA"
-  allow_remote: true
 
 job_search:
-  source: "linkedin"
-  easy_apply_only: true
+  # Target Roles (searched simultaneously via Boolean query)
   target_titles:
-    - "Staff AI ML Software Engineer"
     - "Staff Software Engineer"
-    - "Software Engineer Distributed Systems"
-  locations:
-    - "San Francisco Bay Area"
-    - "Remote"
+    - "Senior Software Engineer"
+    - "AI ML Software Engineer"
+    - "AI Software Engineer"
+    - "Machine Learning Software Engineer"
+  
+  target_location: "United States"
+  exclude_california: true                  # Filters out CA & Bay Area postings
+  easy_apply_only: true
+  
+  # === RECENCY CONTROLS ===
+  sort_by_recent_first: true                # Uses sortBy=DD (Date Descending - newest minutes/hours ago first)
+  time_posted_range: "r86400"               # r86400 = Past 24 Hours, r259200 = Past 3 Days, r604800 = Past Week
+
+company_filters:
+  min_employees: 201                        # Rejects companies with <= 200 employees
+  public_company_only: true                 # Rejects "Privately Held", accepts "Public Company"
+  excluded_industries:
+    - "Business Consulting and Services"
+    - "Information Technology & Services"
+    - "Staffing and Recruiting"
+    - "IT Services and IT Consulting"
+    - "Staffing"
+    - "Recruiting"
+    - "Consulting"
+    - "Human Resources Services"
 
 automation_safety:
   headless_browser: false
   user_data_dir: "data/browser_profile"
   auto_submit: true
-  max_applications_per_run: 50
-  delay_between_jobs_seconds: 2       # Fast transition between job applications
+  step_inspection_delay_seconds: 3.0
+  delay_between_jobs_seconds: 4.0
+  max_applications_per_run: 30

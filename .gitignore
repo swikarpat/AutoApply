@@ -13,7 +13,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Sensitive & Session Data (NEVER COMMIT)
+# Sensitive & Session Data (NEVER COMMIT TO PUBLIC REPO)
 data/
 *.pdf
 *.db
@@ -24,7 +24,7 @@ data/
 # Private Identity & Truth Matrix
 config/truth_matrix.yaml
 
-# Playwright Browser Artifacts
+# Browser Profile (Contains LinkedIn session cookies)
 data/browser_profile/
 test-results/
 playwright-report/
