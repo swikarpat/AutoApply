@@ -1,0 +1,399 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 960" width="100%" height="100%" style="background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Daylight Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#f1f5f9"/>
+    </linearGradient>
+
+    <!-- Daylight Layer Gradients -->
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0f2fe"/>
+      <stop offset="100%" stop-color="#f0f9ff"/>
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f3e8ff"/>
+      <stop offset="100%" stop-color="#faf5ff"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffedd5"/>
+      <stop offset="100%" stop-color="#fff7ed"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dcfce7"/>
+      <stop offset="100%" stop-color="#f0fdf4"/>
+    </linearGradient>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fee2e2"/>
+      <stop offset="100%" stop-color="#fef2f2"/>
+    </linearGradient>
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ccfbf1"/>
+      <stop offset="100%" stop-color="#f0fdfa"/>
+    </linearGradient>
+    <linearGradient id="pinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fce7f3"/>
+      <stop offset="100%" stop-color="#fdf2f8"/>
+    </linearGradient>
+    <linearGradient id="slateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+
+    <!-- Photon Glow Filters -->
+    <filter id="glow-blue" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-purple" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-orange" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-green" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-red" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Arrowhead Markers -->
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#0284c7" />
+    </marker>
+    <marker id="arr-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#9333ea" />
+    </marker>
+    <marker id="arr-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ea580c" />
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#16a34a" />
+    </marker>
+    <marker id="arr-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#dc2626" />
+    </marker>
+    <marker id="arr-teal" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#0d9488" />
+    </marker>
+    <marker id="arr-pink" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db2777" />
+    </marker>
+
+    <!-- Synchronized Touch-Glow & Animation Styles -->
+    <style>
+      .edge-active {
+        stroke-dasharray: 6 10;
+        animation: streamFlow 1.2s linear infinite;
+      }
+      @keyframes streamFlow {
+        from { stroke-dashoffset: 32; }
+        to { stroke-dashoffset: 0; }
+      }
+
+      .box-harvest { animation: pulseHarvest 6s ease-in-out infinite; }
+      @keyframes pulseHarvest {
+        0%, 100% { stroke: #0284c7; }
+        5%, 12% { stroke: #0369a1; filter: drop-shadow(0 0 8px rgba(2, 132, 199, 0.4)); }
+        18% { stroke: #0284c7; }
+      }
+
+      .box-gate { animation: pulseGate 6s ease-in-out infinite; }
+      @keyframes pulseGate {
+        0%, 100% { stroke: #7e22ce; }
+        18%, 26% { stroke: #9333ea; filter: drop-shadow(0 0 10px rgba(147, 51, 234, 0.45)); }
+        34% { stroke: #7e22ce; }
+      }
+
+      .box-modal { animation: pulseModal 6s ease-in-out infinite; }
+      @keyframes pulseModal {
+        0%, 100% { stroke: #ea580c; }
+        32%, 42% { stroke: #c2410c; filter: drop-shadow(0 0 8px rgba(234, 88, 12, 0.45)); }
+        50% { stroke: #ea580c; }
+      }
+
+      .box-truth { animation: pulseTruth 6s ease-in-out infinite; }
+      @keyframes pulseTruth {
+        0%, 100% { stroke: #16a34a; }
+        40%, 50% { stroke: #15803d; filter: drop-shadow(0 0 8px rgba(22, 163, 74, 0.45)); }
+        58% { stroke: #16a34a; }
+      }
+
+      .box-eeo { animation: pulseEeo 6s ease-in-out infinite; }
+      @keyframes pulseEeo {
+        0%, 100% { stroke: #dc2626; }
+        56%, 68% { stroke: #b91c1c; filter: drop-shadow(0 0 12px rgba(220, 38, 38, 0.5)); }
+        76% { stroke: #dc2626; }
+      }
+
+      .box-agent { animation: pulseAgent 6s ease-in-out infinite; }
+      @keyframes pulseAgent {
+        0%, 100% { stroke: #db2777; }
+        68%, 80% { stroke: #be185d; filter: drop-shadow(0 0 8px rgba(219, 39, 119, 0.45)); }
+        88% { stroke: #db2777; }
+      }
+
+      .box-submit { animation: pulseSubmit 6s ease-in-out infinite; }
+      @keyframes pulseSubmit {
+        0%, 100% { stroke: #0d9488; }
+        78%, 90% { stroke: #0f766e; filter: drop-shadow(0 0 8px rgba(13, 148, 136, 0.45)); }
+        98% { stroke: #0d9488; }
+      }
+
+      .edge-badge { animation: badgeGlow 2.4s ease-in-out infinite alternate; }
+      @keyframes badgeGlow {
+        0% { opacity: 0.9; }
+        100% { opacity: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.06)); }
+      }
+
+      .txt-badge { font-weight: 700; font-size: 10px; letter-spacing: 0.4px; }
+      .txt-title { font-weight: 700; font-size: 13px; letter-spacing: 0.5px; }
+      .txt-desc { font-weight: 500; font-size: 11px; fill: #475569; }
+      .txt-layer { font-weight: 800; font-size: 11px; letter-spacing: 1px; }
+    </style>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1200" height="960" fill="url(#bgGrad)" />
+
+  <!-- Subtle Blueprint Grid -->
+  <g opacity="0.45" stroke="#e2e8f0" stroke-width="1">
+    <path d="M 0,55 L 1200,55 M 0,165 L 1200,165 M 0,265 L 1200,265 M 0,510 L 1200,510 M 0,610 L 1200,610 M 0,820 L 1200,820" />
+    <path d="M 120,0 L 120,960 M 360,0 L 360,960 M 600,0 L 600,960 M 840,0 L 840,960 M 1080,0 L 1080,960" />
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- LAYER 1: INGESTION & SEARCH STREAM HARVESTER                 -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(40, 25)">
+    <rect width="1120" height="95" rx="10" fill="#f8fafc" stroke="#93c5fd" stroke-width="1.2" opacity="0.95"/>
+    <text x="20" y="22" class="txt-layer" fill="#0284c7">1. IN-SEARCH STREAM HARVESTER &amp; SESSION CONTROLLER</text>
+
+    <rect x="20" y="34" width="270" height="48" rx="6" fill="url(#blueGrad)" stroke="#0284c7" stroke-width="1.5" class="box-harvest"/>
+    <text x="32" y="54" class="txt-title" fill="#0369a1">LinkedIn Live Search Stream</text>
+    <text x="32" y="70" class="txt-desc">sortBy=DD • Past 24h (f_TPR=r86400)</text>
+
+    <rect x="400" y="34" width="310" height="48" rx="6" fill="url(#blueGrad)" stroke="#0284c7" stroke-width="1.5" class="box-harvest"/>
+    <text x="412" y="54" class="txt-title" fill="#0369a1">Multi-Role Boolean Harvester</text>
+    <text x="412" y="70" class="txt-desc">Staff SWE • Senior SWE • AI/ML SWE</text>
+
+    <rect x="820" y="34" width="280" height="48" rx="6" fill="url(#blueGrad)" stroke="#0284c7" stroke-width="1.5" class="box-harvest"/>
+    <text x="832" y="54" class="txt-title" fill="#0369a1">Playwright Stealth Browser</text>
+    <text x="832" y="70" class="txt-desc">Persistent Session Context Store</text>
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- LAYER 2: ENTERPRISE GATEKEEPER & EXCLUSION FILTER            -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(40, 145)">
+    <rect width="1120" height="70" rx="8" fill="url(#purpleGrad)" stroke="#7e22ce" stroke-width="1.8" class="box-gate"/>
+    <text x="20" y="24" class="txt-layer" fill="#7e22ce">2. ENTERPRISE GATEKEEPER &amp; PRE-QUALIFICATION RULES</text>
+    <text x="20" y="50" class="txt-title" fill="#581c87">Public Company Only (Rejects Privately Held) • Headcount &gt; 200 Employees</text>
+    <text x="610" y="50" class="txt-desc">• Exclude 3rd-Party Staffing &amp; IT Agencies   • Exclude California / Bay Area</text>
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- LAYER 3: PLAYWRIGHT EASY APPLY MODAL ENGINE                  -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(40, 245)">
+    <rect width="540" height="235" rx="10" fill="#f8fafc" stroke="#fdba74" stroke-width="1.2" opacity="0.95"/>
+    <text x="15" y="22" class="txt-layer" fill="#c2410c">3. EASY APPLY MODAL &amp; RESUME ATTACHMENT ENGINE</text>
+
+    <rect x="15" y="34" width="240" height="82" rx="6" fill="url(#orangeGrad)" stroke="#ea580c" stroke-width="1.5" class="box-modal"/>
+    <text x="25" y="54" class="txt-title" fill="#9a3412">DOM Modal Inspector</text>
+    <text x="25" y="72" class="txt-desc">Traverse Multi-Step Forms</text>
+    <text x="25" y="88" class="txt-desc">Typeahead Location Autocomplete</text>
+
+    <rect x="280" y="34" width="240" height="82" rx="6" fill="url(#orangeGrad)" stroke="#ea580c" stroke-width="1.5" class="box-modal"/>
+    <text x="292" y="54" class="txt-title" fill="#9a3412">Master Resume Attacher</text>
+    <text x="292" y="72" class="txt-desc">data/ResumeSoftwareEngineer.pdf</text>
+    <text x="292" y="88" class="txt-desc">Zero Dynamic Generation</text>
+
+    <rect x="15" y="132" width="505" height="85" rx="6" fill="url(#orangeGrad)" stroke="#ea580c" stroke-width="1.5" class="box-modal"/>
+    <text x="25" y="152" class="txt-title" fill="#9a3412">Form Step Validation &amp; Error Recovery</text>
+    <text x="25" y="170" class="txt-desc">• Inspects required (*) fields   • Auto-scrolls modal container to unhide elements</text>
+    <text x="25" y="186" class="txt-desc">• Unchecks "Follow company to stay up to date" on every step</text>
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- LAYER 4: DETERMINISTIC TRUTH MATRIX HEURISTICS               -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(620, 245)">
+    <rect width="540" height="235" rx="10" fill="#f8fafc" stroke="#86efac" stroke-width="1.2" opacity="0.95"/>
+    <text x="15" y="22" class="txt-layer" fill="#15803d">4. DETERMINISTIC TRUTH MATRIX &amp; SKILL MAPPING</text>
+
+    <rect x="15" y="34" width="510" height="52" rx="6" fill="url(#greenGrad)" stroke="#16a34a" stroke-width="1.5" class="box-truth"/>
+    <text x="28" y="55" class="txt-title" fill="#14532d">Candidate Identity &amp; Contact Matrix</text>
+    <text x="28" y="72" class="txt-desc">Real Phone (+1) • Swikar Patel • swikar.aus@gmail.com • San Francisco, CA</text>
+
+    <rect x="15" y="102" width="245" height="115" rx="6" fill="url(#greenGrad)" stroke="#16a34a" stroke-width="1.5" class="box-truth"/>
+    <text x="28" y="124" class="txt-title" fill="#14532d">Skill Experience Mapping</text>
+    <text x="28" y="144" class="txt-desc">• Python / Java / AWS: 6 yrs</text>
+    <text x="28" y="162" class="txt-desc">• AI/ML &amp; LLM: 6 yrs</text>
+    <text x="28" y="180" class="txt-desc">• Default Integer: 6 yrs</text>
+
+    <rect x="280" y="102" width="245" height="115" rx="6" fill="url(#greenGrad)" stroke="#16a34a" stroke-width="1.5" class="box-truth"/>
+    <text x="292" y="124" class="txt-title" fill="#14532d">Work Logistics</text>
+    <text x="292" y="144" class="txt-desc">• Notice Period: 1 week / 5 days</text>
+    <text x="292" y="162" class="txt-desc">• Minimum Salary: $120,000</text>
+    <text x="292" y="180" class="txt-desc">• Hourly Rate: $65/hr</text>
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- LAYER 5: EEO, WORK AUTH & FORM NORMALIZATION GATE            -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(40, 505)">
+    <rect width="1120" height="65" rx="8" fill="url(#redGrad)" stroke="#dc2626" stroke-width="2" class="box-eeo"/>
+    <text x="20" y="24" class="txt-layer" fill="#b91c1c">5. COMPLIANCE, WORK AUTHORIZATION &amp; FORM NORMALIZATION GATE</text>
+    <text x="20" y="48" class="txt-title" fill="#7f1d1d">Strict Rules:</text>
+    <text x="110" y="48" class="txt-desc" fill="#991b1b">Authorized to Work in US ➔ YES  •  Visa Sponsorship ➔ NO  •  Hispanic/Latino ➔ NO  •  Internal Referral ➔ NO  •  Disability ➔ Decline</text>
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- LAYER 6: AGENTIC ESSAY SYNTHESIS & REASONING (GEMINI)        -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(40, 595)">
+    <rect width="540" height="210" rx="10" fill="#f8fafc" stroke="#f472b6" stroke-width="1.2" opacity="0.95"/>
+    <text x="15" y="22" class="txt-layer" fill="#be185d">6. AGENTIC ESSAY SYNTHESIS &amp; REASONING</text>
+
+    <rect x="15" y="34" width="240" height="74" rx="6" fill="url(#pinkGrad)" stroke="#db2777" stroke-width="1.5" class="box-agent"/>
+    <text x="25" y="54" class="txt-title" fill="#831843">Gemini 2.5 Flash Client</text>
+    <text x="25" y="72" class="txt-desc">Synthesize Open-Ended Essays</text>
+    <text x="25" y="88" class="txt-desc">Zero Latency Local Fallback</text>
+
+    <rect x="280" y="34" width="240" height="74" rx="6" fill="url(#pinkGrad)" stroke="#db2777" stroke-width="1.5" class="box-agent"/>
+    <text x="290" y="54" class="txt-title" fill="#831843">Canned Essay Store</text>
+    <text x="290" y="72" class="txt-desc">Deterministic Project Summary</text>
+    <text x="290" y="88" class="txt-desc">Why Interested Statements</text>
+
+    <rect x="15" y="120" width="505" height="74" rx="6" fill="#ffe4e6" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4 2" class="box-agent"/>
+    <text x="25" y="140" class="txt-title" fill="#9f1239">Context Injection Pipeline</text>
+    <text x="25" y="158" class="txt-desc">Injects Master Software Engineer context into custom recruiter textareas</text>
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- LAYER 7: AUTO-SUBMIT, PERSISTENCE & HUMAN PACING             -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(620, 595)">
+    <rect width="540" height="210" rx="10" fill="#f8fafc" stroke="#5eead4" stroke-width="1.2" opacity="0.95"/>
+    <text x="15" y="22" class="txt-layer" fill="#0f766e">7. SUBMISSION, APPLICATION PERSISTENCE &amp; PACING</text>
+
+    <rect x="15" y="34" width="240" height="74" rx="6" fill="url(#tealGrad)" stroke="#0d9488" stroke-width="1.5" class="box-submit"/>
+    <text x="25" y="54" class="txt-title" fill="#115e59">Final Submit Execution</text>
+    <text x="25" y="72" class="txt-desc">Auto-Submit application</text>
+    <text x="25" y="88" class="txt-desc">Safe Modal Dismissal on exit</text>
+
+    <rect x="280" y="34" width="240" height="74" rx="6" fill="url(#tealGrad)" stroke="#0d9488" stroke-width="1.5" class="box-submit"/>
+    <text x="290" y="54" class="txt-title" fill="#115e59">SQLite Application Store</text>
+    <text x="290" y="72" class="txt-desc">applications.db Record</text>
+    <text x="290" y="88" class="txt-desc">Job URL &amp; Status Tracking</text>
+
+    <rect x="15" y="120" width="505" height="74" rx="6" fill="url(#tealGrad)" stroke="#0d9488" stroke-width="1.2"/>
+    <text x="25" y="140" class="txt-title" fill="#115e59">Inspection Pacing Controller</text>
+    <text x="25" y="158" class="txt-desc">3.0s visual inspection pause per step • 4.0s inter-job pacing delay</text>
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- LAYER 8: OBSERVABILITY & SYSTEM SAFEGUARDS                   -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(40, 830)">
+    <rect width="1120" height="90" rx="8" fill="url(#slateGrad)" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="20" y="24" class="txt-layer" fill="#334155">8. CROSS-CUTTING SAFETY, OBSERVABILITY &amp; SESSION CONTROLS</text>
+    <text x="20" y="52" class="txt-title" fill="#0f172a">Rich Terminal Inspector &amp; Live Step Logging</text>
+    <text x="20" y="70" class="txt-desc">Color-coded field tables • Real-time value injection audit • Error stack captures</text>
+
+    <text x="660" y="52" class="txt-title" fill="#0f172a">Persistent Browser Authentication Vault</text>
+    <text x="660" y="70" class="txt-desc">Encrypted local profile tokens • Automatic login checkpoint detection</text>
+  </g>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- FLOW PATHS WITH ACTIVE DASH ARRAYS                           -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <path d="M 300 83 L 440 83" stroke="#0284c7" stroke-width="2.5" fill="none" marker-end="url(#arr-blue)" class="edge-active"/>
+  <path d="M 750 83 L 860 83" stroke="#0284c7" stroke-width="2.5" fill="none" marker-end="url(#arr-blue)" class="edge-active"/>
+  <path d="M 960 107 L 960 145" stroke="#9333ea" stroke-width="2.5" fill="none" marker-end="url(#arr-purple)" class="edge-active"/>
+  <path d="M 280 215 L 280 279" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arr-orange)" class="edge-active"/>
+  <path d="M 295 320 L 320 320" stroke="#ea580c" stroke-width="2" fill="none" marker-end="url(#arr-orange)" class="edge-active"/>
+  <path d="M 880 215 L 880 279" stroke="#16a34a" stroke-width="2.5" fill="none" marker-end="url(#arr-green)" class="edge-active"/>
+  <path d="M 760 331 L 760 347" stroke="#16a34a" stroke-width="2" fill="none" marker-end="url(#arr-green)" class="edge-active"/>
+  <path d="M 880 402 L 900 402" stroke="#16a34a" stroke-width="2" fill="none" marker-end="url(#arr-green)" class="edge-active"/>
+  <path d="M 1040 460 L 1040 505" stroke="#dc2626" stroke-width="2.5" fill="none" marker-end="url(#arr-red)" class="edge-active"/>
+  <path d="M 200 570 L 200 629" stroke="#db2777" stroke-width="2.2" fill="none" marker-end="url(#arr-pink)" class="edge-active"/>
+  <path d="M 295 666 L 320 666" stroke="#db2777" stroke-width="2" fill="none" marker-end="url(#arr-pink)" class="edge-active"/>
+  <path d="M 760 570 L 760 629" stroke="#0d9488" stroke-width="2.2" fill="none" marker-end="url(#arr-teal)" class="edge-active"/>
+  <path d="M 875 666 L 900 666" stroke="#0d9488" stroke-width="2" fill="none" marker-end="url(#arr-teal)" class="edge-active"/>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- PHOTONS / TRAVELING SMIL PARTICLES                           -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <circle r="4.5" fill="#0284c7" filter="url(#glow-blue)">
+    <animateMotion dur="1.4s" repeatCount="indefinite" path="M 300 83 L 440 83" />
+  </circle>
+
+  <circle r="4.5" fill="#0284c7" filter="url(#glow-blue)">
+    <animateMotion dur="1.4s" repeatCount="indefinite" path="M 750 83 L 860 83" />
+  </circle>
+
+  <circle r="5" fill="#9333ea" filter="url(#glow-purple)">
+    <animateMotion dur="1.8s" repeatCount="indefinite" path="M 960 107 L 960 145" />
+  </circle>
+
+  <circle r="5" fill="#ea580c" filter="url(#glow-orange)">
+    <animateMotion dur="2s" repeatCount="indefinite" path="M 280 215 L 280 279" />
+  </circle>
+
+  <circle r="5" fill="#16a34a" filter="url(#glow-green)">
+    <animateMotion dur="2s" repeatCount="indefinite" path="M 880 215 L 880 279" />
+  </circle>
+
+  <circle r="5.5" fill="#dc2626" filter="url(#glow-red)">
+    <animateMotion dur="1.6s" repeatCount="indefinite" path="M 1040 460 L 1040 505" />
+  </circle>
+
+  <circle r="5" fill="#db2777" filter="url(#glow-purple)">
+    <animateMotion dur="1.8s" repeatCount="indefinite" path="M 200 570 L 200 629" />
+  </circle>
+
+  <circle r="5" fill="#0d9488" filter="url(#glow-blue)">
+    <animateMotion dur="1.8s" repeatCount="indefinite" path="M 760 570 L 760 629" />
+  </circle>
+
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <!-- DYNAMIC ANIMATED EDGE BADGES                                 -->
+  <!-- ──────────────────────────────────────────────────────────── -->
+  <g transform="translate(970, 118)" class="edge-badge">
+    <rect x="-10" y="-10" width="84" height="20" rx="10" fill="#faf5ff" stroke="#9333ea" stroke-width="1.2"/>
+    <text x="32" y="4" text-anchor="middle" class="txt-badge" fill="#6b21a8">Job Card</text>
+  </g>
+
+  <g transform="translate(195, 240)" class="edge-badge">
+    <rect x="-10" y="-10" width="135" height="20" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.2"/>
+    <text x="57" y="4" text-anchor="middle" class="txt-badge" fill="#9a3412">Easy Apply Modal</text>
+  </g>
+
+  <g transform="translate(775, 240)" class="edge-badge">
+    <rect x="-10" y="-10" width="150" height="20" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
+    <text x="65" y="4" text-anchor="middle" class="txt-badge" fill="#14532d">Truth Matrix (YAML)</text>
+  </g>
+
+  <g transform="translate(945, 478)" class="edge-badge">
+    <rect x="-10" y="-10" width="140" height="20" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.2"/>
+    <text x="60" y="4" text-anchor="middle" class="txt-badge" fill="#991b1b">Compliance Check</text>
+  </g>
+
+  <g transform="translate(125, 595)" class="edge-badge">
+    <rect x="-10" y="-10" width="140" height="20" rx="10" fill="#fdf2f8" stroke="#db2777" stroke-width="1.2"/>
+    <text x="60" y="4" text-anchor="middle" class="txt-badge" fill="#831843">Essay Synthesis</text>
+  </g>
+
+  <g transform="translate(775, 595)" class="edge-badge">
+    <rect x="-10" y="-10" width="145" height="20" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.2"/>
+    <text x="62" y="4" text-anchor="middle" class="txt-badge" fill="#115e59">Submit &amp; DB Write</text>
+  </g>
+</svg>
