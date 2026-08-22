@@ -239,7 +239,7 @@
     <text x="28" y="180" class="txt-desc">• Default Integer: 6 yrs</text>
 
     <rect x="280" y="102" width="245" height="115" rx="6" fill="url(#greenGrad)" stroke="#16a34a" stroke-width="1.5" class="box-truth"/>
-    <text x="28" y="124" class="txt-title" fill="#14532d">Work Logistics</text>
+    <text x="28" y="124" class="txt-title" fill="#14532d">Work</text>
     <text x="292" y="144" class="txt-desc">• Notice Period: 1 wk / 5 days</text>
     <text x="292" y="162" class="txt-desc">• Min Base Salary: $120,000</text>
     <text x="292" y="180" class="txt-desc">• Hourly Rate: $65/hr</text>
