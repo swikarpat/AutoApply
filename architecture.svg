@@ -228,18 +228,21 @@
     <rect width="540" height="235" rx="10" fill="#f8fafc" stroke="#86efac" stroke-width="1.2" opacity="0.95"/>
     <text x="15" y="22" class="txt-layer" fill="#15803d">4. CANDIDATE RAG MEMORY &amp; STRUCTURED KNOWLEDGE</text>
 
+    <!-- Identity Box -->
     <rect x="15" y="34" width="510" height="52" rx="6" fill="url(#greenGrad)" stroke="#16a34a" stroke-width="1.5" class="box-truth"/>
     <text x="28" y="55" class="txt-title" fill="#14532d">Candidate Identity &amp; Profile Memory Matrix</text>
     <text x="28" y="72" class="txt-desc">Verified Phone (+1) • Swikar Patel • swikar.aus@gmail.com • San Francisco, CA</text>
 
+    <!-- Skill Taxonomy Box -->
     <rect x="15" y="102" width="245" height="115" rx="6" fill="url(#greenGrad)" stroke="#16a34a" stroke-width="1.5" class="box-truth"/>
     <text x="28" y="124" class="txt-title" fill="#14532d">Skill Taxonomy Mapping</text>
     <text x="28" y="144" class="txt-desc">• Python / Java / AWS: 6 yrs</text>
     <text x="28" y="162" class="txt-desc">• AI/ML, LLM &amp; GenAI: 6 yrs</text>
     <text x="28" y="180" class="txt-desc">• Default Integer: 6 yrs</text>
 
+    <!-- Work Logistics Box (Aligned to x=280 with text at x=292) -->
     <rect x="280" y="102" width="245" height="115" rx="6" fill="url(#greenGrad)" stroke="#16a34a" stroke-width="1.5" class="box-truth"/>
-    <text x="28" y="124" class="txt-title" fill="#14532d">Work</text>
+    <text x="292" y="124" class="txt-title" fill="#14532d">Work Logistics</text>
     <text x="292" y="144" class="txt-desc">• Notice Period: 1 wk / 5 days</text>
     <text x="292" y="162" class="txt-desc">• Min Base Salary: $120,000</text>
     <text x="292" y="180" class="txt-desc">• Hourly Rate: $65/hr</text>
