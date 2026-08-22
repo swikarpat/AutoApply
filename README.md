@@ -1,10 +1,10 @@
-# Multi Agentic Automate Job Applications AI ⚡
+# MultiAgentic AI/ML LinkedIn Auto-Apply Job ⚡
 
 An autonomous, agentic LinkedIn job application engine designed to stream, evaluate, and submit LinkedIn "Easy Apply" applications end-to-end. Built with Playwright Async API, Google Gemini Flash, and deterministic heuristic fallback pipelines.
 
 ---
 
-## 🏗️ MultiAgentic AI/ML LinkedIn Auto-Apply Job Architecture
+## 🏗️ System Design Architecture
 
 <p align="center">
   <img src="architecture.svg" alt="Enterprise Architecture" width="100%"/>
