@@ -28,3 +28,6 @@ config/truth_matrix.yaml
 data/browser_profile/
 test-results/
 playwright-report/
+
+# Archives and experiments
+archive/

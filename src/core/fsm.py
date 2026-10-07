@@ -58,9 +58,9 @@ class SupervisorFSM:
         # 4. State: HUMAN-IN-THE-LOOP (HITL) GATE
         console.print(Panel(
             f"[bold magenta]State 4: HUMAN-IN-THE-LOOP (HITL) GATE[/bold magenta]\n"
-            f"• Resume Uploaded: {form_results['resume_uploaded']}\n"
-            f"• Fields Autofilled: {len(form_results['fields_filled'])}\n"
-            f"• Review Screenshot: {form_results['screenshot_path']}\n\n"
+            f"• Resume Uploaded: {form_results.get('resume_uploaded', False)}\n"
+            f"• Fields Autofilled: {len(form_results.get('fields_filled', []))}\n"
+            f"• Review Screenshot: {form_results.get('screenshot_path', 'N/A')}\n\n"
             f"[bold green]Application is filled and ready for review in the active browser![/bold green]"
         ))
 

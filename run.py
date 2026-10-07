@@ -15,8 +15,8 @@ console = Console()
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="AgenticCareer-OS: Multi-Agent Job Application Engine")
-    parser.add_argument("--url", type=str, help="Direct URL to a job posting (Lever, Greenhouse, Ashby, LinkedIn)")
+    parser = argparse.ArgumentParser(description="AutoApply: Autonomous LinkedIn Job Application Engine")
+    parser.add_argument("--url", type=str, help="Direct URL to a job posting (LinkedIn Easy Apply)")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode (default: False)")
     args = parser.parse_args()
 
