@@ -104,8 +104,8 @@ async def command_stats():
         console.print(recent_table)
 
 
-async def command_apply_single(url: str, headless: bool = False, dry_run: bool = False):
-    """Executes the pipeline for a single target job posting URL."""
+async def command_apply_single(url: str, headless: bool = False):
+    """Executes the 100% autonomous pipeline for a single target job posting URL."""
     settings, _ = load_configurations()
     store = ApplicationStateStore()
     llm_client = GeminiFlashClient(model_name=settings.get("llm_routing", {}).get("model", "gemini-2.5-flash"))
@@ -119,47 +119,17 @@ async def command_apply_single(url: str, headless: bool = False, dry_run: bool =
 
     discovery_agent = DiscoveryAgent(store, browser_tool, llm_client)
     match_agent = MatchAgent(store, llm_client)
-    auto_submit_flag = False if dry_run else settings.get("automation_safety", {}).get("auto_submit", True)
-    form_agent = FormAutomationAgent(browser_tool, llm_client, auto_submit=auto_submit_flag)
+    form_agent = FormAutomationAgent(browser_tool, llm_client, auto_submit=True)
     fsm = SupervisorFSM(store, discovery_agent, match_agent, form_agent)
 
     try:
         result = await fsm.execute_job_pipeline(url)
         console.print(f"\n[bold green]Pipeline Execution Result:[/bold green] {result['status']}")
-
-        if result.get("status") == "PENDING_HITL":
-            page = result.get("page")
-            console.print(Panel(
-                "[bold green]✓ ALL APPLICATION STEPS COMPLETED & REVIEW SCREEN REACHED[/bold green]\n\n"
-                "• All input fields autofilled from Truth Matrix\n"
-                "• Master Resume PDF attached\n"
-                "• Follow-Company checkbox verified: [bold yellow]UNCHECKED[/bold yellow]\n\n"
-                "[dim]The browser window remains open so you can inspect the application.[/dim]",
-                title="Dry-Run Inspection Ready",
-                expand=False
-            ))
-            if Confirm.ask("\n[bold cyan]Would you like to SUBMIT this application now?[/bold cyan]", default=False):
-                if page:
-                    submit_btn = page.locator('button[aria-label="Submit application"], button:has-text("Submit application")').first
-                    if await submit_btn.is_visible():
-                        modal = page.locator('div[role="dialog"]').first
-                        await form_agent.uncheck_follow_company(page, modal)
-                        await submit_btn.click(force=True)
-                        await asyncio.sleep(2.5)
-                        store.update_job_status(result["job_id"], ApplicationStatus.SUBMITTED)
-                        console.print("[bold green]✓ Successfully submitted application via confirmation![/bold green]")
-                        done_btn = page.locator('button:has-text("Done"), button[aria-label="Dismiss"]').first
-                        if await done_btn.is_visible():
-                            await done_btn.click(force=True)
-            else:
-                console.print("[yellow]Dry-run review finished. Dismissing modal safely...[/yellow]")
-                if page:
-                    await form_agent._dismiss_modal(page)
     finally:
         await browser_tool.close()
 
 
-async def command_stream(headless: bool = False, dry_run: bool = False):
+async def command_stream(headless: bool = False):
     """Executes the high-speed autonomous stream applier queue matching search criteria in settings.yaml."""
     settings, truth = load_configurations()
     store = ApplicationStateStore()
@@ -171,8 +141,7 @@ async def command_stream(headless: bool = False, dry_run: bool = False):
     await browser.initialize()
 
     discovery_agent = DiscoveryAgent(store, browser, llm_client)
-    auto_submit_flag = False if dry_run else settings.get("automation_safety", {}).get("auto_submit", True)
-    form_agent = FormAutomationAgent(browser, llm_client, auto_submit=auto_submit_flag)
+    form_agent = FormAutomationAgent(browser, llm_client, auto_submit=True)
 
     try:
         page = await browser.get_page("https://www.linkedin.com/jobs/")
@@ -367,10 +336,6 @@ async def command_stream(headless: bool = False, dry_run: bool = False):
                         applied_count += 1
                         store.update_job_status(job_id, ApplicationStatus.SUBMITTED, metadata=res)
                         console.print(f"[bold green]  🎉 SUBMITTED SUCCESSFULLY! (Total Applied: {applied_count}/{max_apps})[/bold green]")
-                    elif res.get("status") == "PENDING_HITL":
-                        store.update_job_status(job_id, ApplicationStatus.PENDING_HITL, metadata=res)
-                        console.print(f"  [bold magenta]  [Dry Run] Reached Review Screen. Modal safely dismissed.[/bold magenta]")
-                        await form_agent._dismiss_modal(page)
                     else:
                         store.update_job_status(job_id, ApplicationStatus.FAILED, metadata=res)
                         console.print(f"  [dim]  Application ended with status: {res.get('status')}[/dim]")
@@ -395,17 +360,14 @@ def main():
     # Command: stream (or run)
     stream_parser = subparsers.add_parser("stream", help="Run continuous stream search and Easy Apply queue")
     stream_parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
-    stream_parser.add_argument("--dry-run", action="store_true", help="Pause on Review screen for human verification without submitting")
 
     run_parser = subparsers.add_parser("run", help="Alias for stream")
     run_parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
-    run_parser.add_argument("--dry-run", action="store_true", help="Pause on Review screen for human verification without submitting")
 
     # Command: apply
     apply_parser = subparsers.add_parser("apply", help="Apply to a specific LinkedIn Easy Apply URL")
     apply_parser.add_argument("--url", type=str, required=True, help="Job posting URL")
     apply_parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
-    apply_parser.add_argument("--dry-run", action="store_true", help="Pause on Review screen for human verification without submitting")
 
     # Command: stats
     subparsers.add_parser("stats", help="Display local application metrics and history")
@@ -417,10 +379,9 @@ def main():
 
     if not args.command or args.command in ["stream", "run"]:
         headless = getattr(args, "headless", False)
-        dry_run = getattr(args, "dry_run", False)
-        asyncio.run(command_stream(headless=headless, dry_run=dry_run))
+        asyncio.run(command_stream(headless=headless))
     elif args.command == "apply":
-        asyncio.run(command_apply_single(url=args.url, headless=args.headless, dry_run=args.dry_run))
+        asyncio.run(command_apply_single(url=args.url, headless=args.headless))
     elif args.command == "stats":
         asyncio.run(command_stats())
     elif args.command == "login":

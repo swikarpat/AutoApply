@@ -56,30 +56,16 @@ class SupervisorFSM:
         if form_results.get("submitted"):
             self.db.update_job_status(job.job_id, ApplicationStatus.SUBMITTED)
             status_return = "SUBMITTED"
-        elif form_results.get("status") == "PENDING_HITL":
-            self.db.update_job_status(job.job_id, ApplicationStatus.PENDING_HITL)
-            status_return = "PENDING_HITL"
-        else:
-            self.db.update_job_status(job.job_id, ApplicationStatus.FAILED)
-            status_return = "FAILED"
-
-        # 4. State: REVIEW & COMPLETION REPORT
-        if status_return == "PENDING_HITL":
-            console.print(Panel(
-                f"[bold magenta]State 4: DRY-RUN REVIEW SCREEN READY[/bold magenta]\n"
-                f"• Resume Uploaded: {form_results.get('resume_uploaded', False)}\n"
-                f"• Fields Autofilled: {len(form_results.get('fields_filled', []))}\n"
-                f"• Follow-Company: [bold green]UNCHECKED GUARANTEE APPLIED[/bold green]\n"
-                f"• Review Screenshot: {form_results.get('screenshot_path', 'N/A')}\n\n"
-                f"[bold green]Application is filled and paused on the Review screen in the browser for inspection![/bold green]"
-            ))
-        elif status_return == "SUBMITTED":
             console.print(Panel(
                 f"[bold green]State 4: APPLICATION SUBMITTED[/bold green]\n"
                 f"• Company: {job.company_name}\n"
                 f"• Role: {job.job_title}\n"
                 f"• Proof Screenshot: {form_results.get('screenshot_path', 'N/A')}"
             ))
+        else:
+            self.db.update_job_status(job.job_id, ApplicationStatus.FAILED)
+            status_return = "FAILED"
+            console.print(f"[red]State 4: Application failed or incomplete: {form_results.get('error', 'Unknown')}[/red]")
 
         return {
             "status": status_return,

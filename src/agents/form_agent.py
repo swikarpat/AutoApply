@@ -35,11 +35,9 @@ class FormAutomationAgent:
 
         configured_pdf = self.settings.get("resume_attachment", {}).get("master_pdf_path", "data/ResumeSoftwareEngineer.pdf")
         self.pdf_path = os.path.abspath(configured_pdf)
-        if auto_submit is not None:
-            self.auto_submit = auto_submit
-        else:
-            self.auto_submit = self.settings.get("automation_safety", {}).get("auto_submit", True)
-        self.step_delay = self.settings.get("automation_safety", {}).get("step_inspection_delay_seconds", 1.5)
+        # 100% Autonomous: HITL is permanently disabled; always auto-submit
+        self.auto_submit = True
+        self.step_delay = self.settings.get("automation_safety", {}).get("step_inspection_delay_seconds", 0.4)
 
     async def uncheck_follow_company(self, page: Page, modal: Locator) -> bool:
         """
@@ -542,7 +540,6 @@ class FormAutomationAgent:
 
                 await asyncio.sleep(self.step_delay)
 
-                # E. Check for Final Submit Application Button
                 submit_btn = modal.locator(
                     'button[aria-label="Submit application"], '
                     'button:has-text("Submit application")'
@@ -552,40 +549,32 @@ class FormAutomationAgent:
                     # Uncheck follow company right before submitting!
                     await self.uncheck_follow_company(page, modal)
 
-                    if self.auto_submit:
-                        print("  [Submit] 🚀 Auto-submitting application...")
-                        await submit_btn.click(force=True)
-                        await asyncio.sleep(2.5)
+                    print("  [Submit] 🚀 Auto-submitting application...")
+                    await submit_btn.click(force=True)
+                    await asyncio.sleep(2.0)
 
-                        # Capture confirmation screenshot
-                        screenshot_path = await self.browser.take_review_screenshot(page, job_id)
-                        results["screenshot_path"] = screenshot_path
-                        results["submitted"] = True
-                        results["status"] = "SUBMITTED"
-                        submitted = True
-                        print(f"  [Success] ✓ APPLICATION SUBMITTED FOR '{company}'!")
+                    # Capture confirmation screenshot
+                    screenshot_path = await self.browser.take_review_screenshot(page, job_id)
+                    results["screenshot_path"] = screenshot_path
+                    results["submitted"] = True
+                    results["status"] = "SUBMITTED"
+                    submitted = True
+                    print(f"  [Success] ✓ APPLICATION SUBMITTED FOR '{company}'!")
 
-                        # Close post-apply completion dialog
-                        await asyncio.sleep(1.0)
-                        try:
-                            done_btn = page.locator(
-                                'button:has-text("Done"), '
-                                'button[aria-label="Done"], '
-                                'button[aria-label="Dismiss"], '
-                                'button:has-text("Dismiss")'
-                            ).first
-                            if await done_btn.is_visible():
-                                await done_btn.click(force=True)
-                                await asyncio.sleep(0.6)
-                        except Exception:
-                            pass
-                    else:
-                        print("  [Dry-Run Gate] Pausing on Review screen for human inspection.")
-                        screenshot_path = await self.browser.take_review_screenshot(page, job_id)
-                        results["screenshot_path"] = screenshot_path
-                        results["submitted"] = False
-                        results["status"] = "PENDING_HITL"
-                        print("  [Dry-Run Notice] All form fields filled, resume attached, follow-company unchecked. Ready for inspection.")
+                    # Close post-apply completion dialog
+                    await asyncio.sleep(0.8)
+                    try:
+                        done_btn = page.locator(
+                            'button:has-text("Done"), '
+                            'button[aria-label="Done"], '
+                            'button[aria-label="Dismiss"], '
+                            'button:has-text("Dismiss")'
+                        ).first
+                        if await done_btn.is_visible():
+                            await done_btn.click(force=True)
+                            await asyncio.sleep(0.5)
+                    except Exception:
+                        pass
                     break
 
                 # F. Click Next / Review Navigation
@@ -600,7 +589,7 @@ class FormAutomationAgent:
                     btn_text = (await next_btn.inner_text()).strip()
                     print(f"  [Navigation] Clicking '{btn_text}'...")
                     await next_btn.click(force=True)
-                    await asyncio.sleep(1.0)
+                    await asyncio.sleep(0.6)
 
                     # Validation error recovery
                     error_badge = modal.locator('.artdeco-inline-feedback--error, .fb-form-element--error').first
@@ -608,11 +597,11 @@ class FormAutomationAgent:
                         print("  [Validation Recovery] Retrying required fields with fallback defaults...")
                         await self._fill_modal_fields(page, modal, force_all=True)
                         await next_btn.click(force=True)
-                        await asyncio.sleep(1.0)
+                        await asyncio.sleep(0.8)
                 else:
                     break
         finally:
-            if not submitted and results.get("status") != "PENDING_HITL":
+            if not submitted:
                 await self._dismiss_modal(page)
 
         return results

@@ -140,13 +140,14 @@ The architecture strictly decouples job stream discovery, form field introspecti
 
 ## 4. Architectural Decision Records (ADRs)
 
-### ADR-001: 100% Autonomous LinkedIn Easy Apply (Zero-Manual-Intervention)
+### ADR-001: 100% Autonomous LinkedIn Easy Apply (Zero-Manual-Intervention & Complete HITL Deprecation)
 * **Status**: Accepted & Enforced
-* **Decision**: Eliminate all manual "Human-In-The-Loop" (HITL) prompt pauses by default. The system operates in 100% autonomous mode (`auto_submit: true`).
+* **Decision**: Permanently eliminate all manual "Human-In-The-Loop" (HITL) prompt pauses and the `PENDING_HITL` state. The system operates in 100% autonomous mode (`auto_submit = True` unconditionally) across both stream discovery and single application workflows.
 * **Engineering Rationale**:
-  1. Manual confirmation dialogs break stream automation and defeat the purpose of daemonized continuous applications.
+  1. Manual confirmation dialogs and review pauses disrupt autonomous operation and conflict with candidate requirements.
   2. The candidate's Truth Matrix (`truth_matrix.yaml`) combined with semantic fallbacks and Gemini 2.5 Flash handles 100% of standard Easy Apply fields reliably.
-  3. Edge cases and unresolvable validation errors are captured cleanly and recorded as `FAILED` in SQLite without blocking subsequent stream jobs.
+  3. No artificial execution timers (e.g. 2-minute or 30-minute throttles) are enforced; jobs are processed continuously per `settings.yaml` boundaries.
+  4. Edge cases and unresolvable validation errors are captured cleanly and recorded as `FAILED` in SQLite without blocking subsequent stream jobs.
 
 ### ADR-002: Dual-Layer Anti-Follow Guarantee (Never Follow Any Company)
 * **Status**: Accepted & Enforced

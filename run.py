@@ -48,15 +48,6 @@ async def main():
     try:
         result = await fsm.execute_job_pipeline(target_url)
         console.print(f"\n[bold green]Pipeline Execution Result:[/bold green] {result['status']}")
-
-        # 4. Interactive HITL Confirmation
-        if result.get("status") == "PENDING_HITL":
-            if Confirm.ask("\n[bold cyan]Would you like to keep the browser open to inspect the review page?[/bold cyan]"):
-                console.print("[yellow]Browser kept open. Press Ctrl+C in terminal when finished.[/yellow]")
-                while True:
-                    await asyncio.sleep(1)
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Shutting down browser...[/yellow]")
     finally:
         await browser_tool.close()
 
