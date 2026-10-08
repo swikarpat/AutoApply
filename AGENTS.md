@@ -251,10 +251,16 @@ python main.py login
 # 2. Continuous Stream Auto-Apply
 python main.py stream
 
-# 3. Apply to a Specific Job URL (Targeted test)
+# 3. Dry-Run Stream (Autofills everything, pauses on Review screen without submitting)
+python main.py stream --dry-run
+
+# 4. Apply to a Specific Job URL (Targeted execution)
 python main.py apply --url "https://www.linkedin.com/jobs/view/<JOB_ID>/"
 
-# 4. View Live Application Metrics & Statistics
+# 5. Dry-Run Single Job (Autofills, unchecks follow-company, and holds for inspection)
+python main.py apply --url "https://www.linkedin.com/jobs/view/<JOB_ID>/" --dry-run
+
+# 6. View Live Application Metrics & Statistics
 python main.py stats
 ```
 

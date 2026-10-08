@@ -104,7 +104,7 @@ async def command_stats():
         console.print(recent_table)
 
 
-async def command_apply_single(url: str, headless: bool = False):
+async def command_apply_single(url: str, headless: bool = False, dry_run: bool = False):
     """Executes the pipeline for a single target job posting URL."""
     settings, _ = load_configurations()
     store = ApplicationStateStore()
@@ -118,7 +118,8 @@ async def command_apply_single(url: str, headless: bool = False):
 
     discovery_agent = DiscoveryAgent(store, browser_tool, llm_client)
     match_agent = MatchAgent(store, llm_client)
-    form_agent = FormAutomationAgent(browser_tool, llm_client)
+    auto_submit_flag = False if dry_run else settings.get("automation_safety", {}).get("auto_submit", True)
+    form_agent = FormAutomationAgent(browser_tool, llm_client, auto_submit=auto_submit_flag)
     fsm = SupervisorFSM(store, discovery_agent, match_agent, form_agent)
 
     try:
@@ -126,15 +127,38 @@ async def command_apply_single(url: str, headless: bool = False):
         console.print(f"\n[bold green]Pipeline Execution Result:[/bold green] {result['status']}")
 
         if result.get("status") == "PENDING_HITL":
-            if Confirm.ask("\n[bold cyan]Would you like to keep the browser open to inspect the review page?[/bold cyan]"):
-                console.print("[yellow]Browser kept open. Press Ctrl+C in terminal when finished.[/yellow]")
-                while True:
-                    await asyncio.sleep(1)
+            page = result.get("page")
+            console.print(Panel(
+                "[bold green]✓ ALL APPLICATION STEPS COMPLETED & REVIEW SCREEN REACHED[/bold green]\n\n"
+                "• All input fields autofilled from Truth Matrix\n"
+                "• Master Resume PDF attached\n"
+                "• Follow-Company checkbox verified: [bold yellow]UNCHECKED[/bold yellow]\n\n"
+                "[dim]The browser window remains open so you can inspect the application.[/dim]",
+                title="Dry-Run Inspection Ready",
+                expand=False
+            ))
+            if Confirm.ask("\n[bold cyan]Would you like to SUBMIT this application now?[/bold cyan]", default=False):
+                if page:
+                    submit_btn = page.locator('button[aria-label="Submit application"], button:has-text("Submit application")').first
+                    if await submit_btn.is_visible():
+                        modal = page.locator('div[role="dialog"]').first
+                        await form_agent.uncheck_follow_company(page, modal)
+                        await submit_btn.click(force=True)
+                        await asyncio.sleep(2.5)
+                        store.update_job_status(result["job_id"], ApplicationStatus.SUBMITTED)
+                        console.print("[bold green]✓ Successfully submitted application via confirmation![/bold green]")
+                        done_btn = page.locator('button:has-text("Done"), button[aria-label="Dismiss"]').first
+                        if await done_btn.is_visible():
+                            await done_btn.click(force=True)
+            else:
+                console.print("[yellow]Dry-run review finished. Dismissing modal safely...[/yellow]")
+                if page:
+                    await form_agent._dismiss_modal(page)
     finally:
         await browser_tool.close()
 
 
-async def command_stream(headless: bool = False):
+async def command_stream(headless: bool = False, dry_run: bool = False):
     """Executes the autonomous stream applier queue matching search criteria in settings.yaml."""
     settings, truth = load_configurations()
     store = ApplicationStateStore()
@@ -145,7 +169,8 @@ async def command_stream(headless: bool = False):
     await browser.initialize()
 
     discovery_agent = DiscoveryAgent(store, browser, llm_client)
-    form_agent = FormAutomationAgent(browser, llm_client)
+    auto_submit_flag = False if dry_run else settings.get("automation_safety", {}).get("auto_submit", True)
+    form_agent = FormAutomationAgent(browser, llm_client, auto_submit=auto_submit_flag)
 
     try:
         page = await browser.get_page("https://www.linkedin.com/jobs/")
@@ -258,14 +283,17 @@ def main():
     # Command: stream (or run)
     stream_parser = subparsers.add_parser("stream", help="Run continuous stream search and Easy Apply queue")
     stream_parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
+    stream_parser.add_argument("--dry-run", action="store_true", help="Pause on Review screen for human verification without submitting")
 
     run_parser = subparsers.add_parser("run", help="Alias for stream")
     run_parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
+    run_parser.add_argument("--dry-run", action="store_true", help="Pause on Review screen for human verification without submitting")
 
     # Command: apply
     apply_parser = subparsers.add_parser("apply", help="Apply to a specific LinkedIn Easy Apply URL")
     apply_parser.add_argument("--url", type=str, required=True, help="Job posting URL")
     apply_parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
+    apply_parser.add_argument("--dry-run", action="store_true", help="Pause on Review screen for human verification without submitting")
 
     # Command: stats
     subparsers.add_parser("stats", help="Display local application metrics and history")
@@ -277,9 +305,10 @@ def main():
 
     if not args.command or args.command in ["stream", "run"]:
         headless = getattr(args, "headless", False)
-        asyncio.run(command_stream(headless=headless))
+        dry_run = getattr(args, "dry_run", False)
+        asyncio.run(command_stream(headless=headless, dry_run=dry_run))
     elif args.command == "apply":
-        asyncio.run(command_apply_single(url=args.url, headless=args.headless))
+        asyncio.run(command_apply_single(url=args.url, headless=args.headless, dry_run=args.dry_run))
     elif args.command == "stats":
         asyncio.run(command_stats())
     elif args.command == "login":

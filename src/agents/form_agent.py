@@ -15,7 +15,8 @@ class FormAutomationAgent:
         browser_tool: StealthBrowserTool,
         llm_client: GeminiFlashClient,
         config_path: str = "config/settings.yaml",
-        truth_path: str = "config/truth_matrix.yaml"
+        truth_path: str = "config/truth_matrix.yaml",
+        auto_submit: Optional[bool] = None
     ):
         self.browser = browser_tool
         self.llm = llm_client
@@ -34,7 +35,10 @@ class FormAutomationAgent:
 
         configured_pdf = self.settings.get("resume_attachment", {}).get("master_pdf_path", "data/ResumeSoftwareEngineer.pdf")
         self.pdf_path = os.path.abspath(configured_pdf)
-        self.auto_submit = self.settings.get("automation_safety", {}).get("auto_submit", True)
+        if auto_submit is not None:
+            self.auto_submit = auto_submit
+        else:
+            self.auto_submit = self.settings.get("automation_safety", {}).get("auto_submit", True)
         self.step_delay = self.settings.get("automation_safety", {}).get("step_inspection_delay_seconds", 1.5)
 
     async def uncheck_follow_company(self, page: Page, modal: Locator) -> bool:
@@ -575,6 +579,13 @@ class FormAutomationAgent:
                                 await asyncio.sleep(0.6)
                         except Exception:
                             pass
+                    else:
+                        print("  [Dry-Run Gate] Pausing on Review screen for human inspection.")
+                        screenshot_path = await self.browser.take_review_screenshot(page, job_id)
+                        results["screenshot_path"] = screenshot_path
+                        results["submitted"] = False
+                        results["status"] = "PENDING_HITL"
+                        print("  [Dry-Run Notice] All form fields filled, resume attached, follow-company unchecked. Ready for inspection.")
                     break
 
                 # F. Click Next / Review Navigation
@@ -601,7 +612,7 @@ class FormAutomationAgent:
                 else:
                     break
         finally:
-            if not submitted:
+            if not submitted and results.get("status") != "PENDING_HITL":
                 await self._dismiss_modal(page)
 
         return results
