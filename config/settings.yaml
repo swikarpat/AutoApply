@@ -34,8 +34,8 @@ job_search:
   time_posted_range: "r86400"               # r86400 = Past 24 Hours, r259200 = Past 3 Days, r604800 = Past Week
 
 company_filters:
-  min_employees: 201                        # Rejects companies with <= 200 employees
-  public_company_only: true                 # Rejects "Privately Held", accepts "Public Company"
+  min_employees: 5000                       # Rejects companies with < 5000 employees (Strict >= 5,000 threshold)
+  public_company_only: false                # Allow enterprise private companies if >= 5000 employees
   excluded_industries:
     - "Business Consulting and Services"
     - "Information Technology & Services"
@@ -47,9 +47,9 @@ company_filters:
     - "Human Resources Services"
 
 automation_safety:
-  headless_browser: false
+  headless_browser: true                    # Headless execution: zero GUI disturbance
   user_data_dir: "data/browser_profile"
-  auto_submit: true
-  step_inspection_delay_seconds: 3.0
-  delay_between_jobs_seconds: 4.0
+  auto_submit: true                         # 100% autonomous submission (zero manual pauses)
+  step_inspection_delay_seconds: 0.4        # Accelerated modal step execution
+  delay_between_jobs_seconds: 1.0           # Fast inter-job transition delay
   max_applications_per_run: 30

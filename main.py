@@ -110,8 +110,9 @@ async def command_apply_single(url: str, headless: bool = False, dry_run: bool =
     store = ApplicationStateStore()
     llm_client = GeminiFlashClient(model_name=settings.get("llm_routing", {}).get("model", "gemini-2.5-flash"))
 
+    is_headless = headless or settings.get("automation_safety", {}).get("headless_browser", True)
     browser_tool = StealthBrowserTool(
-        headless=headless,
+        headless=is_headless,
         user_data_dir=settings.get("automation_safety", {}).get("user_data_dir", "data/browser_profile")
     )
     await browser_tool.initialize()
@@ -159,13 +160,14 @@ async def command_apply_single(url: str, headless: bool = False, dry_run: bool =
 
 
 async def command_stream(headless: bool = False, dry_run: bool = False):
-    """Executes the autonomous stream applier queue matching search criteria in settings.yaml."""
+    """Executes the high-speed autonomous stream applier queue matching search criteria in settings.yaml."""
     settings, truth = load_configurations()
     store = ApplicationStateStore()
     llm_client = GeminiFlashClient(model_name=settings.get("llm_routing", {}).get("model", "gemini-2.5-flash"))
 
+    is_headless = headless or settings.get("automation_safety", {}).get("headless_browser", True)
     user_data_dir = settings.get("automation_safety", {}).get("user_data_dir", "data/browser_profile")
-    browser = StealthBrowserTool(headless=headless, user_data_dir=user_data_dir)
+    browser = StealthBrowserTool(headless=is_headless, user_data_dir=user_data_dir)
     await browser.initialize()
 
     discovery_agent = DiscoveryAgent(store, browser, llm_client)
@@ -174,12 +176,12 @@ async def command_stream(headless: bool = False, dry_run: bool = False):
 
     try:
         page = await browser.get_page("https://www.linkedin.com/jobs/")
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(1.5)
 
         # Login verification
         if any(k in page.url for k in ["login", "signup", "checkpoint", "authwall"]):
             console.print(Panel(
-                "[bold yellow]ACTION REQUIRED: Please log in to LinkedIn on the open browser window.[/bold yellow]\n"
+                "[bold yellow]ACTION REQUIRED: Please log in to LinkedIn on the browser.[/bold yellow]\n"
                 "[dim]Session will be saved for subsequent automated runs.[/dim]"
             ))
             while any(k in page.url for k in ["login", "signup", "checkpoint", "authwall"]):
@@ -192,115 +194,193 @@ async def command_stream(headless: bool = False, dry_run: bool = False):
         location = job_cfg.get("target_location", "United States")
         recent_first = job_cfg.get("sort_by_recent_first", True)
         time_range = job_cfg.get("time_posted_range", "r86400")
+        exclude_ca = job_cfg.get("exclude_california", True)
+
+        ca_indicators = [
+            "california", ", ca", "ca,", "ca ", "(ca)", "san francisco", "bay area", 
+            "los angeles", "san jose", "san diego", "sunnyvale", 
+            "mountain view", "palo alto", "menlo park", "cupertino", 
+            "fremont", "oakland", "santa clara", "irvine"
+        ]
+        excluded_staffing_agencies = [
+            "cybercoders", "insight global", "teksystems", "apex systems", "robert half",
+            "kforce", "jobot", "motion recruitment", "beacon hill", "hays", "randstad",
+            "adecco", "manpower", "aerotek", "collabera", "kelly services", "judge group"
+        ]
 
         boolean_query = " OR ".join([f'"{t}"' for t in titles])
         import urllib.parse
-        params = {
+        base_params = {
             "keywords": boolean_query,
             "location": location,
             "f_AL": "true",  # Easy Apply only
             "sortBy": "DD" if recent_first else "R"
         }
         if time_range:
-            params["f_TPR"] = time_range
-
-        search_url = f"https://www.linkedin.com/jobs/search/?{urllib.parse.urlencode(params)}"
-        console.print(Panel(
-            f"[bold cyan]Target Roles:[/bold cyan] {', '.join(titles)}\n"
-            f"[bold cyan]Location:[/bold cyan] {location} | [bold cyan]Recency:[/bold cyan] Newest First ({time_range})\n"
-            f"[bold cyan]Search URL:[/bold cyan] [link={search_url}]{search_url}[/link]",
-            title="AutoApply Stream Engine",
-            expand=False
-        ))
-
-        await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
-        await asyncio.sleep(2.5)
-
-        card_locators = page.locator(
-            'li[data-occludable-job-id], '
-            'li.jobs-search-results__list-item, '
-            'div.job-card-container, '
-            'div[data-job-id]'
-        )
-        total_cards = await card_locators.count()
-        console.print(f"[bold cyan]Discovered {total_cards} job cards in active stream.[/bold cyan]\n")
+            base_params["f_TPR"] = time_range
 
         max_apps = settings.get("automation_safety", {}).get("max_applications_per_run", 30)
         applied_count = 0
+        max_search_pages = 10
 
-        for idx in range(total_cards):
+        console.print(Panel(
+            f"[bold cyan]Target Roles:[/bold cyan] {', '.join(titles)}\n"
+            f"[bold cyan]Location:[/bold cyan] {location} | [bold cyan]Recency:[/bold cyan] Newest First ({time_range})\n"
+            f"[bold cyan]Company Filter:[/bold cyan] >= 5,000 Employees | [bold cyan]Headless Mode:[/bold cyan] {is_headless}\n"
+            f"[bold cyan]Auto-Submit:[/bold cyan] {auto_submit_flag} (Zero manual confirmation needed)",
+            title="AutoApply High-Speed Stream Engine ⚡",
+            expand=False
+        ))
+
+        for page_idx in range(1, max_search_pages + 1):
             if applied_count >= max_apps:
                 console.print(f"[yellow]Reached application cap of {max_apps} for this run.[/yellow]")
                 break
 
-            card = card_locators.nth(idx)
-            try:
-                if not await card.is_visible():
-                    await card.scroll_into_view_if_needed()
-                    await asyncio.sleep(0.3)
+            params = dict(base_params)
+            if page_idx > 1:
+                params["start"] = (page_idx - 1) * 25
 
-                card_text = (await card.inner_text()).split("\n")
-                card_title = card_text[0].strip() if card_text else "Job Posting"
-                console.print(f"[bold yellow][{idx+1}/{total_cards}] Inspecting:[/bold yellow] {card_title[:55]}")
+            search_url = f"https://www.linkedin.com/jobs/search/?{urllib.parse.urlencode(params)}"
+            console.print(f"\n[bold magenta]─── Search Page {page_idx}/{max_search_pages} ───[/bold magenta] [dim]{search_url}[/dim]")
 
-                await card.click()
-                await asyncio.sleep(1.2)
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
+            await asyncio.sleep(2.0)
 
-                card_id_attr = await card.get_attribute("data-job-id") or await card.get_attribute("data-occludable-job-id")
-                job_id = card_id_attr if card_id_attr else f"stream_{idx+1}"
+            # High-speed DOM evaluation: extract all cards metadata in ONE shot
+            cards_meta = await page.evaluate("""() => {
+                const cards = Array.from(document.querySelectorAll(
+                    'li[data-occludable-job-id], li.jobs-search-results__list-item, div.job-card-container, div[data-job-id]'
+                ));
+                return cards.map((c, i) => {
+                    const jobId = c.getAttribute('data-job-id') || c.getAttribute('data-occludable-job-id') || '';
+                    const titleEl = c.querySelector('.job-card-list__title, .job-card-container__link, a[data-control-id]');
+                    const compEl = c.querySelector('.job-card-container__primary-description, .artdeco-entity-lockup__subtitle, .job-card-container__company-name');
+                    const locEl = c.querySelector('.job-card-container__metadata-item, .job-card-container__metadata-wrapper');
+                    const text = (c.innerText || '').toLowerCase();
+                    return {
+                        index: i,
+                        jobId: jobId,
+                        title: titleEl ? titleEl.innerText.trim() : '',
+                        company: compEl ? compEl.innerText.trim() : '',
+                        location: locEl ? locEl.innerText.trim() : '',
+                        hasEasyApply: text.includes('easy apply'),
+                        isApplied: text.includes('applied'),
+                        rawText: text
+                    };
+                });
+            }""")
 
-                # Extract company name
-                company_name = "Target Company"
-                try:
-                    comp_el = card.locator('.job-card-container__primary-description, .artdeco-entity-lockup__subtitle, .job-card-container__company-name').first
-                    if await comp_el.count() > 0:
-                        company_name = (await comp_el.inner_text()).strip()
-                except Exception:
-                    pass
+            total_cards = len(cards_meta)
+            if total_cards == 0:
+                console.print("[dim]No more job cards found on this page. Ending stream search.[/dim]")
+                break
 
-                job_posting = JobPosting(
-                    job_id=job_id,
-                    platform="linkedin",
-                    company_name=company_name,
-                    job_title=card_title,
-                    location=location,
-                    job_url=f"https://www.linkedin.com/jobs/view/{job_id}/",
-                    raw_description=card_title,
-                    status=ApplicationStatus.DISCOVERED,
-                )
-                store.upsert_job(job_posting)
+            card_locators = page.locator(
+                'li[data-occludable-job-id], '
+                'li.jobs-search-results__list-item, '
+                'div.job-card-container, '
+                'div[data-job-id]'
+            )
 
-                # Pre-screen eligibility (e.g. California exclusion, company size, public status)
-                eligible, reason = await discovery_agent.evaluate_job_eligibility(page, settings)
-                if not eligible:
-                    console.print(f"  [yellow]Filtered Out: {reason}. Skipping.[/yellow]")
-                    store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": reason})
+            console.print(f"[bold cyan]Discovered {total_cards} job cards on Page {page_idx}. Running instant pre-filter...[/bold cyan]")
+
+            for meta in cards_meta:
+                if applied_count >= max_apps:
+                    break
+
+                idx = meta["index"]
+                job_id = meta["jobId"] or f"stream_{page_idx}_{idx+1}"
+                card_title = meta["title"] or "Job Posting"
+                company_name = meta["company"] or "Enterprise Employer"
+                card_loc = meta["location"] or ""
+                card_text = meta["rawText"]
+
+                # 1. Instant SQLite status check
+                existing_status = store.get_job_status(job_id)
+                if existing_status in [ApplicationStatus.SUBMITTED, ApplicationStatus.SKIPPED]:
+                    console.print(f"  [dim]• [{idx+1}/{total_cards}] Skipping '{card_title[:40]}' ({company_name}): Already in DB ({existing_status})[/dim]")
                     continue
 
-                console.print(f"  [green]Eligible ({reason}). Traversing Easy Apply...[/green]")
-                store.update_job_status(job_id, ApplicationStatus.FORM_MAPPED)
+                # 2. Instant Applied badge check
+                if meta["isApplied"]:
+                    store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": "Already applied on LinkedIn"})
+                    console.print(f"  [dim]• [{idx+1}/{total_cards}] Skipping '{card_title[:40]}': Marked Applied on LinkedIn[/dim]")
+                    continue
 
-                # Process Easy Apply on the active card
-                res = await form_agent.process_linkedin_application(page, job_id, card_title, company_name)
-                if res.get("submitted"):
-                    applied_count += 1
-                    store.update_job_status(job_id, ApplicationStatus.SUBMITTED, metadata=res)
-                    console.print(f"[bold green]✓ SUBMITTED SUCCESSFULLY! (Total: {applied_count}/{max_apps})[/bold green]")
-                elif res.get("status") == "PENDING_HITL":
-                    store.update_job_status(job_id, ApplicationStatus.PENDING_HITL, metadata=res)
-                    console.print(f"  [bold magenta]✓ DRY RUN: Reached Review Screen! Pausing 8s so you can inspect...[/bold magenta]")
-                    await asyncio.sleep(8.0)
-                    await form_agent._dismiss_modal(page)
-                else:
-                    store.update_job_status(job_id, ApplicationStatus.FAILED, metadata=res)
-                    console.print(f"  [dim]Result status: {res.get('status')}[/dim]")
+                # 3. Instant Easy Apply badge check
+                if not meta["hasEasyApply"]:
+                    store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": "No Easy Apply badge"})
+                    continue
 
-                await asyncio.sleep(settings.get("automation_safety", {}).get("delay_between_jobs_seconds", 3.0))
-            except Exception as e:
-                console.print(f"  [red]Error on card {idx+1}: {e}[/red]")
-                continue
+                # 4. Instant California Region filter (0ms delay)
+                if exclude_ca:
+                    if any(ind in card_loc.lower() for ind in ca_indicators) or any(ind in card_text for ind in ca_indicators):
+                        store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": "Excluded Region: CA"})
+                        console.print(f"  [dim]• [{idx+1}/{total_cards}] Skipping '{card_title[:40]}': Excluded CA region[/dim]")
+                        continue
 
-        console.print(f"\n[bold green]AutoApply stream session finished. Submitted/Inspected: {applied_count}[/bold green]")
+                # 5. Instant Staffing Agency filter (0ms delay)
+                comp_lower = company_name.lower()
+                if any(agency in comp_lower for agency in excluded_staffing_agencies):
+                    store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": f"Excluded Staffing Agency: {company_name}"})
+                    console.print(f"  [dim]• [{idx+1}/{total_cards}] Skipping '{card_title[:40]}': Excluded Staffing Agency ({company_name})[/dim]")
+                    continue
+
+                # Candidate passed pre-filter! Click card to inspect details & verify >= 5,000 employees
+                console.print(f"\n[bold yellow]🔍 Candidate Job [{idx+1}/{total_cards}]:[/bold yellow] [bold white]{card_title}[/bold white] at [cyan]{company_name}[/cyan]")
+                
+                try:
+                    card = card_locators.nth(idx)
+                    if not await card.is_visible():
+                        await card.scroll_into_view_if_needed()
+                        await asyncio.sleep(0.2)
+
+                    await card.click()
+                    await asyncio.sleep(0.4)  # Fast details pane update wait
+
+                    job_posting = JobPosting(
+                        job_id=job_id,
+                        platform="linkedin",
+                        company_name=company_name,
+                        job_title=card_title,
+                        location=card_loc or location,
+                        job_url=f"https://www.linkedin.com/jobs/view/{job_id}/",
+                        raw_description=card_title,
+                        status=ApplicationStatus.DISCOVERED,
+                    )
+                    store.upsert_job(job_posting)
+
+                    # Strict enterprise size (>= 5,000 employees) & eligibility verification
+                    eligible, reason = await discovery_agent.evaluate_job_eligibility(page, settings)
+                    if not eligible:
+                        console.print(f"  [yellow]↳ Filtered Out: {reason}. Skipping.[/yellow]")
+                        store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": reason})
+                        continue
+
+                    console.print(f"  [green]↳ ✓ Eligible Employer ({reason})! Executing autonomous Easy Apply...[/green]")
+                    store.update_job_status(job_id, ApplicationStatus.FORM_MAPPED)
+
+                    # Execute 100% autonomous Easy Apply
+                    res = await form_agent.process_linkedin_application(page, job_id, card_title, company_name)
+                    if res.get("submitted"):
+                        applied_count += 1
+                        store.update_job_status(job_id, ApplicationStatus.SUBMITTED, metadata=res)
+                        console.print(f"[bold green]  🎉 SUBMITTED SUCCESSFULLY! (Total Applied: {applied_count}/{max_apps})[/bold green]")
+                    elif res.get("status") == "PENDING_HITL":
+                        store.update_job_status(job_id, ApplicationStatus.PENDING_HITL, metadata=res)
+                        console.print(f"  [bold magenta]  [Dry Run] Reached Review Screen. Modal safely dismissed.[/bold magenta]")
+                        await form_agent._dismiss_modal(page)
+                    else:
+                        store.update_job_status(job_id, ApplicationStatus.FAILED, metadata=res)
+                        console.print(f"  [dim]  Application ended with status: {res.get('status')}[/dim]")
+
+                    await asyncio.sleep(settings.get("automation_safety", {}).get("delay_between_jobs_seconds", 1.0))
+                except Exception as e:
+                    console.print(f"  [red]Error processing card {idx+1}: {e}[/red]")
+                    continue
+
+        console.print(f"\n[bold green]AutoApply stream session finished. Submitted: {applied_count}[/bold green]")
     finally:
         await browser.close()
 

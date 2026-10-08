@@ -47,3 +47,5 @@ def test_state_store_lifecycle(tmp_path):
     evaluated_jobs = store.get_jobs_by_status(ApplicationStatus.EVALUATED)
     assert len(evaluated_jobs) == 1
     assert evaluated_jobs[0]["job_id"] == job_hash
+    assert store.get_job_status(job_hash) == ApplicationStatus.EVALUATED
+    assert store.get_job_status("non_existent_job_id") is None

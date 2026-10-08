@@ -186,13 +186,33 @@ The architecture strictly decouples job stream discovery, form field introspecti
 * **Decision**: Standardize all CLI interactions into `main.py` with structured argparse subcommands (`stream`, `apply`, `login`, `stats`), while retaining `daemon.py` and `test_single.py` as lightweight shims.
 * **Engineering Rationale**: Eliminates fractured entry scripts and ensures all operational workflows share identical initialization, configuration loading, and error handling.
 
+### ADR-007: Enterprise Employer Boundary (Strict $\ge 5,000$ Employees Invariant)
+* **Status**: Accepted & Enforced
+* **Decision**: Enforce a mandatory minimum company size threshold of **5,000 employees** across all job discovery and stream operations.
+* **Engineering Rationale**:
+  1. The candidate exclusively targets large-scale enterprise companies offering robust engineering infrastructure, career mobility, and compensation parity.
+  2. Sub-5000 size brackets (`1-10`, `11-50`, `51-200`, `201-500`, `501-1,000`, `1,001-5,000 employees`) and job postings with unverified employee counts are immediately rejected before application mapping.
+  3. Valid size tiers are strictly constrained to `5,001-10,000 employees`, `10,001+ employees`, or explicit employee counts verified $\ge 5,000$.
+
+### ADR-008: High-Speed Zero-Disturbance Execution (Headless Mode & Instant Pre-Filter)
+* **Status**: Accepted & Enforced
+* **Decision**: Execute all browser automation in headless mode by default (`headless_browser: true`) with single-pass JavaScript card pre-filtering and multi-page stream pagination.
+* **Engineering Rationale**:
+  1. Prevents browser window popups from disturbing the user's workflow or stealing window focus.
+  2. Single-pass JS card extraction triages 25 search cards in $<50\text{ ms}$, instantly filtering out California locations, already-applied jobs, staffing agencies, and non-Easy-Apply postings without triggering sequential 1.2s card clicks.
+  3. Automatic multi-page stream pagination advances to subsequent result pages (`&start=25`, `&start=50`, etc.) to sustain continuous autonomous application throughput.
+
 ---
 
 ## 5. Live Dynamic Memory & Active Operational Invariants
 
 ### 🧠 Persistent Knowledge Vault
 
-1. **Anti-Follow Invariant**:
+1. **Enterprise Employer Invariant ($\ge 5,000$ Employees)**:
+   - Only companies with verified $\ge 5,000$ employees (`5,001-10,000 employees`, `10,001+ employees`, or confirmed numeric totals $\ge 5,000$) are eligible.
+   - Any posting with $< 5,000$ employees or unverified employee count is marked `SKIPPED` in SQLite.
+
+2. **Anti-Follow Invariant**:
    - `input#follow-company-checkbox` or any checkbox with label containing `"Follow"` or `"stay up to date"` must **ALWAYS** be unchecked.
    - Verification must occur:
      - On initial step load
@@ -201,7 +221,7 @@ The architecture strictly decouples job stream discovery, form field introspecti
      - On the Final Review screen
      - Milliseconds prior to clicking `"Submit application"`
 
-2. **LinkedIn Easy Apply DOM Selectors**:
+3. **LinkedIn Easy Apply DOM Selectors**:
    - Easy Apply Button:
      - `button.jobs-apply-button`
      - `button[aria-label*="Easy Apply"]`
@@ -216,7 +236,7 @@ The architecture strictly decouples job stream discovery, form field introspecti
      - Submit: `button[aria-label="Submit application"]`, `button:has-text("Submit application")`
      - Dismiss: `button[aria-label="Dismiss"]`, `button:has-text("Done")`
 
-3. **Stealth & Anti-Detection Rules**:
+4. **Stealth & Anti-Detection Rules**:
    - Never use fixed delays. Always randomize sleep timers:
      - Form step transition: `0.8s - 1.8s`
      - Typing simulation: `15ms - 45ms` per keystroke
@@ -224,7 +244,7 @@ The architecture strictly decouples job stream discovery, form field introspecti
    - Always run with viewport `1280x800` or higher to prevent mobile responsive layouts from hiding desktop action buttons.
    - User agent string must match contemporary macOS Chrome desktop.
 
-4. **Secrets & Privacy Isolation**:
+5. **Secrets & Privacy Isolation**:
    - The following files contain private identity, credentials, or session cookies and **MUST NEVER BE COMMITTED TO GIT**:
      - `data/` (contains `applications.db`, resume PDFs, and `browser_profile/`)
      - `.env` (contains `GEMINI_API_KEY`)

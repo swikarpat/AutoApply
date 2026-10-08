@@ -38,26 +38,78 @@ class DiscoveryAgent:
 
         return f"https://www.linkedin.com/jobs/search/?{urllib.parse.urlencode(params)}"
 
+    def check_company_size(self, raw_text: str, min_employees: int = 5000) -> Tuple[bool, str]:
+        """
+        Validates company employee count against min_employees threshold (default: >= 5000).
+        Strictly enforces enterprise size requirement and rejects sub-5000 or unverified companies.
+        """
+        import re
+        text = raw_text.lower()
+        # Normalize hyphens and multiple spaces
+        text = re.sub(r'\s*-\s*', '-', text)
+
+        # 1. Immediate rejection for explicit sub-5000 size tiers
+        small_size_signatures = [
+            "1-10 employees", "2-10 employees", "11-50 employees", 
+            "51-200 employees", "201-500 employees", 
+            "501-1,000 employees", "501-1000 employees",
+            "1,001-5,000 employees", "1001-5000 employees", "1,000-5,000 employees",
+            "1k-5k employees", "<1,000 employees", "<500 employees"
+        ]
+        for sig in small_size_signatures:
+            if sig in text:
+                return False, f"Company size < 5,000 employees ({sig})"
+
+        # 2. Acceptance for verified >= 5000 size tiers
+        large_size_signatures = [
+            "10,001+ employees", "10001+ employees", "10,000+ employees", "10000+ employees",
+            "5,001-10,000 employees", "5001-10000 employees", "5,000-10,000 employees",
+            "5,000+ employees", "5000+ employees", "10k+ employees", "5k-10k employees"
+        ]
+        for sig in large_size_signatures:
+            if sig in text:
+                return True, f"Verified enterprise company size ({sig})"
+
+        # 3. Numeric employee count regex fallback (e.g. "7,500 employees", "25,000 employees")
+        matches = re.findall(r'([\d,]+)(?:\+|-[\d,]+)?\s*employees', text)
+        for m in matches:
+            try:
+                num = int(m.replace(",", ""))
+                if num >= min_employees:
+                    return True, f"Verified employee count >= {min_employees} ({num:,} employees)"
+                else:
+                    return False, f"Company size too small ({num:,} < {min_employees} employees)"
+            except ValueError:
+                pass
+
+        # 4. Strict filter enforcement: if size cannot be verified >= 5000, reject
+        return False, f"Unverified company size (requires >= {min_employees} employees)"
+
     async def evaluate_job_eligibility(self, page: Page, settings: dict) -> Tuple[bool, str]:
         """
         Evaluates active job posting against configured safety & boundary filters:
         - Exclude California / Bay Area if configured
         - Exclude Staffing, Agency & IT Consulting industries
-        - Public Company requirement
-        - Minimum employee count (> 200)
+        - Public Company requirement (if configured)
+        - Strictly enforce company size >= 5000 employees
         """
         filters = settings.get("company_filters", {})
         search_cfg = settings.get("job_search", {})
+        min_employees = filters.get("min_employees", 5000)
 
         try:
             job_meta = await page.evaluate(
                 """() => {
-                    const topCard = document.querySelector('.jobs-details__main-content, .job-view-layout, .job-details-jobs-unified-top-card')?.innerText || '';
-                    const aboutCompany = document.querySelector('.jobs-company, .artdeco-card')?.innerText || '';
-                    const locationHeader = document.querySelector('.job-details-jobs-unified-top-card__bullet, .jobs-unified-top-card__bullet')?.innerText || '';
+                    const detailsContainer = document.querySelector(
+                        '.jobs-search__job-details, .jobs-details, .jobs-details__main-content, .job-view-layout, div[data-view-name="job-details"]'
+                    );
+                    const detailsText = detailsContainer ? detailsContainer.innerText : (document.body ? document.body.innerText : '');
+                    const locationHeader = document.querySelector(
+                        '.job-details-jobs-unified-top-card__bullet, .jobs-unified-top-card__bullet, .job-details-jobs-unified-top-card__primary-description-container'
+                    )?.innerText || '';
                     
                     return {
-                        full_text: (topCard + ' ' + aboutCompany).toLowerCase(),
+                        full_text: detailsText.toLowerCase(),
                         location: locationHeader.toLowerCase()
                     };
                 }"""
@@ -68,7 +120,7 @@ class DiscoveryAgent:
             # 1. California Exclusion Filter
             if search_cfg.get("exclude_california", False):
                 ca_indicators = [
-                    "california", ", ca", "ca,", "san francisco", "bay area", 
+                    "california", ", ca", "ca,", "ca ", "(ca)", "san francisco", "bay area", 
                     "los angeles", "san jose", "san diego", "sunnyvale", 
                     "mountain view", "palo alto", "menlo park", "cupertino", 
                     "fremont", "oakland", "santa clara", "irvine"
@@ -82,21 +134,20 @@ class DiscoveryAgent:
                 if ind.lower() in raw:
                     return False, f"Excluded Industry: '{ind}'"
 
-            # 3. Public Company Only
+            # 3. Public Company Only (if enabled)
             if filters.get("public_company_only", False):
                 if "privately held" in raw or "private" in raw:
                     if "public company" not in raw:
                         return False, "Non-Public Company (Privately Held)"
 
-            # 4. Minimum Employee Count (> 200)
-            small_sizes = ["1-10 employees", "11-50 employees", "51-200 employees", "2-10 employees"]
-            for sig in small_sizes:
-                if sig in raw:
-                    return False, f"Company size too small ({sig})"
+            # 4. Strict Enterprise Company Size Filter (>= 5,000 employees)
+            size_ok, size_reason = self.check_company_size(raw, min_employees=min_employees)
+            if not size_ok:
+                return False, size_reason
 
-            return True, "Eligible"
+            return True, f"Eligible ({size_reason})"
         except Exception as e:
-            return True, f"Eligibility check bypassed: {e}"
+            return False, f"Eligibility check failed: {e}"
 
     async def ingest_from_url(self, job_url: str) -> Optional[JobPosting]:
         try:

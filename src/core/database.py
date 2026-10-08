@@ -160,6 +160,18 @@ class ApplicationStateStore:
                 ),
             )
 
+    def get_job_status(self, job_id: str) -> Optional[ApplicationStatus]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT status FROM jobs WHERE job_id = ?", (job_id,))
+            row = cursor.fetchone()
+            if row:
+                try:
+                    return ApplicationStatus(row["status"])
+                except ValueError:
+                    return None
+            return None
+
     def get_jobs_by_status(self, status: ApplicationStatus) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
