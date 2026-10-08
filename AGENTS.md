@@ -172,12 +172,14 @@ The architecture strictly decouples job stream discovery, form field introspecti
   * **Tier 3 (Gemini 2.5 Flash Fallback)**: For novel or open-ended company questions, format a structured JSON prompt with candidate credentials and query Gemini Flash to select or draft the optimal response.
 * **Engineering Rationale**: Prevents unnecessary LLM API calls and latency on 95% of standard questions while maintaining high adaptability for complex questionnaires.
 
-### ADR-005: SQLite Write-Ahead Logging (WAL) State Store
+### ADR-005: SQLite Write-Ahead Logging (WAL) State Store & Terminal Status Invariant
 * **Status**: Accepted & Enforced
-* **Decision**: Store all job postings, evaluation logs, and application states in a local SQLite database (`data/applications.db`) configured with `PRAGMA journal_mode=WAL;`.
+* **Decision**: Store all job postings, evaluation logs, and application states in a local SQLite database (`data/applications.db`) configured with `PRAGMA journal_mode=WAL;`. Enforce terminal immutability: once an application transitions to `SUBMITTED`, its status cannot be regressed or overwritten by subsequent scraped duplicate cards or render retries.
 * **Engineering Rationale**:
   1. Fast, zero-dependency, crash-resilient ACID storage suitable for single-node daemon processes.
   2. WAL mode allows concurrent reads (e.g. `main.py stats`) while the daemon writes application updates without table locking.
+  3. Terminal immutability guarantees historical submission audit records remain accurate even when LinkedIn search streams re-render identical cards.
+
 
 ### ADR-006: Unified Master CLI Architecture
 * **Status**: Accepted & Enforced

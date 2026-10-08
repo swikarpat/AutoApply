@@ -116,6 +116,10 @@ class ApplicationStateStore:
             row = cursor.fetchone()
             current_status = row["status"] if row else None
 
+            # Terminal invariant: once SUBMITTED, never regress or overwrite to FAILED/SKIPPED
+            if current_status == ApplicationStatus.SUBMITTED.value and new_status != ApplicationStatus.SUBMITTED:
+                return
+
             cursor.execute(
                 "UPDATE jobs SET status = ?, updated_at = ? WHERE job_id = ?",
                 (new_status.value, now, job_id),

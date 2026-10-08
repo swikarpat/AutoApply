@@ -14,7 +14,7 @@ from src.agents.match_agent import MatchAgent
 from src.core.database import ApplicationStateStore
 from src.core.fsm import SupervisorFSM
 from src.core.llm_client import GeminiFlashClient
-from src.core.schemas import ApplicationStatus
+from src.core.schemas import ApplicationStatus, JobPosting
 from src.mcp.tools.browser import StealthBrowserTool
 
 console = Console()
