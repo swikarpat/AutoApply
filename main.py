@@ -246,21 +246,53 @@ async def command_stream(headless: bool = False, dry_run: bool = False):
                 await card.click()
                 await asyncio.sleep(1.2)
 
+                card_id_attr = await card.get_attribute("data-job-id") or await card.get_attribute("data-occludable-job-id")
+                job_id = card_id_attr if card_id_attr else f"stream_{idx+1}"
+
+                # Extract company name
+                company_name = "Target Company"
+                try:
+                    comp_el = card.locator('.job-card-container__primary-description, .artdeco-entity-lockup__subtitle, .job-card-container__company-name').first
+                    if await comp_el.count() > 0:
+                        company_name = (await comp_el.inner_text()).strip()
+                except Exception:
+                    pass
+
+                job_posting = JobPosting(
+                    job_id=job_id,
+                    platform="linkedin",
+                    company_name=company_name,
+                    job_title=card_title,
+                    location=location,
+                    job_url=f"https://www.linkedin.com/jobs/view/{job_id}/",
+                    raw_description=card_title,
+                    status=ApplicationStatus.DISCOVERED,
+                )
+                store.upsert_job(job_posting)
+
                 # Pre-screen eligibility (e.g. California exclusion, company size, public status)
                 eligible, reason = await discovery_agent.evaluate_job_eligibility(page, settings)
                 if not eligible:
                     console.print(f"  [yellow]Filtered Out: {reason}. Skipping.[/yellow]")
+                    store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": reason})
                     continue
 
                 console.print(f"  [green]Eligible ({reason}). Traversing Easy Apply...[/green]")
+                store.update_job_status(job_id, ApplicationStatus.FORM_MAPPED)
 
                 # Process Easy Apply on the active card
-                job_id = f"stream_{idx+1}"
-                res = await form_agent.process_linkedin_application(page, job_id, card_title, "Target Company")
+                res = await form_agent.process_linkedin_application(page, job_id, card_title, company_name)
                 if res.get("submitted"):
                     applied_count += 1
+                    store.update_job_status(job_id, ApplicationStatus.SUBMITTED, metadata=res)
                     console.print(f"[bold green]✓ SUBMITTED SUCCESSFULLY! (Total: {applied_count}/{max_apps})[/bold green]")
+                elif res.get("status") == "PENDING_HITL":
+                    store.update_job_status(job_id, ApplicationStatus.PENDING_HITL, metadata=res)
+                    console.print(f"  [bold magenta]✓ DRY RUN: Reached Review Screen! Pausing 8s so you can inspect...[/bold magenta]")
+                    await asyncio.sleep(8.0)
+                    await form_agent._dismiss_modal(page)
                 else:
+                    store.update_job_status(job_id, ApplicationStatus.FAILED, metadata=res)
                     console.print(f"  [dim]Result status: {res.get('status')}[/dim]")
 
                 await asyncio.sleep(settings.get("automation_safety", {}).get("delay_between_jobs_seconds", 3.0))
@@ -268,7 +300,7 @@ async def command_stream(headless: bool = False, dry_run: bool = False):
                 console.print(f"  [red]Error on card {idx+1}: {e}[/red]")
                 continue
 
-        console.print(f"\n[bold green]AutoApply stream session finished. Submitted: {applied_count}[/bold green]")
+        console.print(f"\n[bold green]AutoApply stream session finished. Submitted/Inspected: {applied_count}[/bold green]")
     finally:
         await browser.close()
 
