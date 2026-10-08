@@ -245,23 +245,25 @@ playwright install chromium
 
 ### Operational Commands
 ```bash
+# You can use './autoapply' directly or '.venv/bin/python main.py' (or 'source .venv/bin/activate')
+
 # 1. Interactive LinkedIn Login (Run once to establish session)
-python main.py login
+./autoapply login
 
 # 2. Continuous Stream Auto-Apply
-python main.py stream
+./autoapply stream
 
 # 3. Dry-Run Stream (Autofills everything, pauses on Review screen without submitting)
-python main.py stream --dry-run
+./autoapply stream --dry-run
 
 # 4. Apply to a Specific Job URL (Targeted execution)
-python main.py apply --url "https://www.linkedin.com/jobs/view/<JOB_ID>/"
+./autoapply apply --url "https://www.linkedin.com/jobs/view/<JOB_ID>/"
 
 # 5. Dry-Run Single Job (Autofills, unchecks follow-company, and holds for inspection)
-python main.py apply --url "https://www.linkedin.com/jobs/view/<JOB_ID>/" --dry-run
+./autoapply apply --url "https://www.linkedin.com/jobs/view/<JOB_ID>/" --dry-run
 
 # 6. View Live Application Metrics & Statistics
-python main.py stats
+./autoapply stats
 ```
 
 ### Automated Test Suite
