@@ -24,7 +24,7 @@ from src.core.notifier import (
     notify_daily_cap_reached,
 )
 from src.core.schemas import ApplicationStatus, JobPosting
-from src.mcp.tools.browser import StealthBrowserTool
+from src.mcp.tools.browser import StealthBrowserTool, is_browser_disconnected_error
 
 console = Console()
 
@@ -183,6 +183,11 @@ async def command_apply_single(url: str, headless: bool = False):
     try:
         result = await fsm.execute_job_pipeline(url)
         console.print(f"\n[bold green]Pipeline Execution Result:[/bold green] {result['status']}")
+    except Exception as e:
+        if is_browser_disconnected_error(e):
+            console.print(f"\n[bold yellow]⚠️ Browser connection severed (macOS sleep / lid closed): {e}[/bold yellow]")
+            return
+        raise
     finally:
         await browser_tool.close()
 
@@ -532,10 +537,25 @@ async def command_stream(headless: bool = False):
                         console.print(f"  [dim]  Application ended with status: {res.get('status')}[/dim]")
                         await asyncio.sleep(settings.get("automation_safety", {}).get("delay_between_jobs_seconds", 1.0))
                 except Exception as e:
+                    if is_browser_disconnected_error(e):
+                        console.print(
+                            f"\n[bold yellow]⚠️ Browser connection severed on card {idx+1} "
+                            f"(macOS sleep / lid closed): {e}[/bold yellow]\n"
+                            f"[dim]Cleaning up session safely. Next scheduled launchd interval will resume seamlessly.[/dim]"
+                        )
+                        return
                     console.print(f"  [red]Error processing card {idx+1}: {e}[/red]")
                     continue
 
         console.print(f"\n[bold green]AutoApply stream session finished. Submitted: {applied_count}[/bold green]")
+    except Exception as e:
+        if is_browser_disconnected_error(e):
+            console.print(
+                f"\n[bold yellow]⚠️ Browser stream disconnected (macOS sleep / wake / lid closed): {e}[/bold yellow]\n"
+                f"[dim]Session closed cleanly. Next 30-minute launchd interval will start a fresh session.[/dim]"
+            )
+            return
+        raise
     finally:
         await browser.close()
 

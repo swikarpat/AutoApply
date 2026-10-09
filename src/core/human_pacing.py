@@ -20,16 +20,16 @@ class HumanPacingEngine:
         self.active_start_hour = pacing_cfg.get("active_start_hour", 9)
         self.active_end_hour = pacing_cfg.get("active_end_hour", 21)
         self.active_end_minute = pacing_cfg.get("active_end_minute", 30)
-        self.min_daily_target = pacing_cfg.get("min_daily_target", 16)
-        self.max_daily_target = pacing_cfg.get("max_daily_target", 38)
-        self.weekend_min_target = pacing_cfg.get("weekend_min_target", 6)
-        self.weekend_max_target = pacing_cfg.get("weekend_max_target", 14)
-        self.hard_24h_cap = pacing_cfg.get("hard_24h_cap", 45)
+        self.min_daily_target = pacing_cfg.get("min_daily_target", 42)
+        self.max_daily_target = pacing_cfg.get("max_daily_target", 47)
+        self.weekend_min_target = pacing_cfg.get("weekend_min_target", 12)
+        self.weekend_max_target = pacing_cfg.get("weekend_max_target", 20)
+        self.hard_24h_cap = pacing_cfg.get("hard_24h_cap", 48)
 
     def get_todays_target(self, target_date: Optional[date] = None) -> int:
         """
         Dynamically calculates a deterministic floating daily target seeded by the calendar date.
-        - Weekdays (Mon-Fri): Gaussian distribution clamped between min and max target (mean 26, std 5).
+        - Weekdays (Mon-Fri): Gaussian distribution clamped between min and max target (mean 45, std 2).
         - Weekends (Sat-Sun): Reduced volume between weekend_min and weekend_max target.
         """
         if target_date is None:
@@ -40,7 +40,7 @@ class HumanPacingEngine:
 
         # Weekday check (0=Mon, 4=Fri, 5=Sat, 6=Sun)
         if target_date.weekday() < 5:
-            val = rng.gauss(26.0, 5.0)
+            val = rng.gauss(45.0, 2.0)
             clamped = int(round(max(self.min_daily_target, min(self.max_daily_target, val))))
             return clamped
         else:

@@ -59,11 +59,11 @@ pacing:
   active_start_hour: 9
   active_end_hour: 21
   active_end_minute: 30
-  min_daily_target: 16
-  max_daily_target: 38
-  weekend_min_target: 6
-  weekend_max_target: 14
-  hard_24h_cap: 45
+  min_daily_target: 42
+  max_daily_target: 47
+  weekend_min_target: 12
+  weekend_max_target: 20
+  hard_24h_cap: 48
 
 notifications:
   enabled: true                             # Send desktop alert when daily application cap is hit

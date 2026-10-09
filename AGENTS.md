@@ -210,10 +210,10 @@ The architecture strictly decouples job stream discovery, form field introspecti
 * **Status**: Accepted & Enforced
 * **Decision**: Enforce a comprehensive Human Behavioral Mimicry and Anti-Bot Pacing Engine (`HumanPacingEngine`) across all discovery, form filling, and stream operations.
 * **Engineering Rationale**:
-  1. **Strict 24-Hour Application Ceiling**: LinkedIn enforces an internal rate limit ceiling (~50 applications per 24 hours). The engine queries `ApplicationStateStore.count_recent_submissions(hours=24)` and enforces a hard ceiling of **45 applications** within any rolling 24-hour window, preventing account restriction.
+  1. **Strict 24-Hour Application Ceiling**: LinkedIn enforces an internal rate limit ceiling (~50 applications per 24 hours). The engine queries `ApplicationStateStore.count_recent_submissions(hours=24)` and enforces a hard ceiling of **48 applications** within any rolling 24-hour window, preventing account restriction.
   2. **Stochastic Daily Quota**: To mimic natural human job-hunting variability, compute a floating daily target seeded deterministically by `date.toordinal()`:
-     - Weekdays (Mon-Fri): Gaussian distribution clamped between 16 and 38 applications ($\mu = 26, \sigma = 5$).
-     - Weekends (Sat-Sun): Reduced volume between 6 and 14 applications.
+     - Weekdays (Mon-Fri): Gaussian distribution clamped between 42 and 47 applications ($\mu = 45, \sigma = 2$).
+     - Weekends (Sat-Sun): Balanced volume between 12 and 20 applications.
   3. **Natural Operating Hours Window**: Applications are strictly restricted to local hours between 09:00 and 21:30. Stream loops cleanly idle or halt outside this window.
   4. **Micro-Jitter & Natural Delays**:
      - Pre-apply reading delay: 12 to 28 seconds of dwell time on the posting before clicking Easy Apply.
@@ -229,6 +229,14 @@ The architecture strictly decouples job stream discovery, form field introspecti
   2. Dispatches an urgent macOS desktop notification with sound `"Sosumi"` alerting the user that manual verification is required.
   3. Creates an emergency lockfile at `data/.checkpoint_lock`. While active, all subsequent `main.py stream` and `apply` invocations abort immediately at startup without generating network traffic.
   4. Once manually resolved via `./autoapply login`, the candidate clears the lock using `./autoapply unlock`.
+
+### ADR-011: Robust macOS Sleep/Wake & Abrupt Disconnect Recovery
+* **Status**: Accepted & Enforced
+* **Decision**: Harden browser lifecycle management against intermittent laptop sessions, lid closes, and sleep/wake network disconnects.
+* **Engineering Rationale**:
+  1. **Singleton Stale Lock Pruning**: Abrupt laptop sleep or kill signals leave Chromium `SingletonLock`, `SingletonCookie`, and `SingletonSocket` symlinks. `StealthBrowserTool` proactively purges these stale locks prior to launching `launch_persistent_context()`.
+  2. **Graceful Disconnection Handling**: Catch `TargetClosedError` and `PlaywrightError` ("browser closed", "connection closed") mid-stream. If the laptop lid closes during an active application, the runner logs a warning, releases browser resources cleanly, and halts without leaving zombie processes.
+  3. **30-Minute Re-engagement Frequency**: The macOS `launchd` daemon executes on an 1800-second (30 minute) recurring interval, allowing the application engine to automatically resume whenever the laptop wakes within active operating hours.
 
 ---
 
@@ -359,6 +367,9 @@ python telemetry_collector.py --log-file telemetry_log.jsonl --interval 5
 
 # Test system telemetry collector
 .venv/bin/pytest tests/test_telemetry.py
+
+# Test browser recovery and sleep/wake resilience
+.venv/bin/pytest tests/test_browser_recovery.py
 ```
 
 ### Background Daemon Automation (`launchd` on macOS)
@@ -369,7 +380,7 @@ templates/com.autoapply.stream.plist
 # 2. Installed at:
 ~/Library/LaunchAgents/com.autoapply.stream.plist
 
-# 3. Load / Register the 2-hour recurring background service:
+# 3. Load / Register the 30-minute recurring background service:
 launchctl load ~/Library/LaunchAgents/com.autoapply.stream.plist
 
 # 4. Inspect live stdout / stderr logs:

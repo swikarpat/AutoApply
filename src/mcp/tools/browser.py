@@ -2,7 +2,12 @@ import os
 import random
 import asyncio
 from typing import Optional
-from playwright.async_api import async_playwright, BrowserContext, Page
+from playwright.async_api import async_playwright, BrowserContext, Page, Error as PlaywrightError
+
+try:
+    from playwright._impl._errors import TargetClosedError
+except ImportError:
+    TargetClosedError = PlaywrightError
 
 try:
     from playwright_stealth.stealth import stealth_async
@@ -21,6 +26,24 @@ except ImportError:
             )
 
 
+def is_browser_disconnected_error(e: Exception) -> bool:
+    """Checks if an exception was caused by a sudden browser crash, disconnect, or OS sleep/wake."""
+    if isinstance(e, (PlaywrightError, TargetClosedError)):
+        msg = str(e).lower()
+        if any(term in msg for term in [
+            "target closed",
+            "target page, context or browser has been closed",
+            "browser has been closed",
+            "connection closed",
+            "page closed",
+            "session closed",
+            "browser closed",
+            "broken pipe",
+        ]):
+            return True
+    return False
+
+
 class StealthBrowserTool:
     def __init__(self, headless: bool = False, user_data_dir: str = "data/browser_profile"):
         self.headless = headless
@@ -29,31 +52,50 @@ class StealthBrowserTool:
         self.playwright = None
         self.context: Optional[BrowserContext] = None
 
+    def cleanup_stale_locks(self) -> None:
+        """Removes stale Chromium Singleton lock files left behind by an ungraceful OS sleep or termination."""
+        lock_files = ["SingletonLock", "SingletonCookie", "SingletonSocket"]
+        for lock_name in lock_files:
+            lock_path = os.path.join(self.user_data_dir, lock_name)
+            try:
+                if os.path.islink(lock_path) or os.path.exists(lock_path):
+                    os.unlink(lock_path)
+            except OSError:
+                pass
+
     async def initialize(self) -> None:
+        self.cleanup_stale_locks()
         self.playwright = await async_playwright().start()
-        self.context = await self.playwright.chromium.launch_persistent_context(
-            user_data_dir=self.user_data_dir,
-            headless=self.headless,
-            viewport={"width": 1280, "height": 800},
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-infobars",
-                "--start-maximized",
-            ],
-        )
+        try:
+            self.context = await self.playwright.chromium.launch_persistent_context(
+                user_data_dir=self.user_data_dir,
+                headless=self.headless,
+                viewport={"width": 1280, "height": 800},
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-infobars",
+                    "--start-maximized",
+                ],
+            )
+        except (PlaywrightError, TargetClosedError):
+            self.cleanup_stale_locks()
+            raise
 
     async def get_page(self, url: str) -> Page:
-        if not self.context.pages:
-            page = await self.context.new_page()
-        else:
-            page = self.context.pages[0]
+        try:
+            if not self.context or not self.context.pages:
+                page = await self.context.new_page()
+            else:
+                page = self.context.pages[0]
 
-        await stealth_async(page)
-        await page.goto(url, wait_until="domcontentloaded", timeout=45000)
-        await self._human_delay(1.5, 2.5)
-        return page
+            await stealth_async(page)
+            await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+            await self._human_delay(1.5, 2.5)
+            return page
+        except (PlaywrightError, TargetClosedError):
+            raise
 
     async def _human_delay(self, min_s: float = 1.0, max_s: float = 2.0) -> None:
         await asyncio.sleep(random.uniform(min_s, max_s))
@@ -106,8 +148,13 @@ class StealthBrowserTool:
                 await self.context.close()
         except Exception:
             pass
+        finally:
+            self.context = None
         try:
             if self.playwright:
                 await self.playwright.stop()
         except Exception:
             pass
+        finally:
+            self.playwright = None
+        self.cleanup_stale_locks()

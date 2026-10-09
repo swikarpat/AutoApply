@@ -12,11 +12,11 @@ def sample_settings():
             "active_start_hour": 9,
             "active_end_hour": 21,
             "active_end_minute": 30,
-            "min_daily_target": 16,
-            "max_daily_target": 38,
-            "weekend_min_target": 6,
-            "weekend_max_target": 14,
-            "hard_24h_cap": 45,
+            "min_daily_target": 42,
+            "max_daily_target": 47,
+            "weekend_min_target": 12,
+            "weekend_max_target": 20,
+            "hard_24h_cap": 48,
         }
     }
 
@@ -29,7 +29,7 @@ def test_deterministic_daily_target(sample_settings):
     target_a = engine.get_todays_target(d1)
     target_b = engine.get_todays_target(d1)
     assert target_a == target_b
-    assert 16 <= target_a <= 38
+    assert 42 <= target_a <= 47
 
 
 def test_weekday_quota_clamping(sample_settings):
@@ -41,7 +41,7 @@ def test_weekday_quota_clamping(sample_settings):
         test_d = date(2026, 10, day)
         if test_d.weekday() < 5:  # Monday to Friday
             target = engine.get_todays_target(test_d)
-            assert 16 <= target <= 38, f"Weekday target {target} out of bounds for {test_d}"
+            assert 42 <= target <= 47, f"Weekday target {target} out of bounds for {test_d}"
 
 
 def test_weekend_quota_clamping(sample_settings):
@@ -55,8 +55,8 @@ def test_weekend_quota_clamping(sample_settings):
     sat_target = engine.get_todays_target(sat)
     sun_target = engine.get_todays_target(sun)
 
-    assert 6 <= sat_target <= 14, f"Saturday target {sat_target} out of bounds"
-    assert 6 <= sun_target <= 14, f"Sunday target {sun_target} out of bounds"
+    assert 12 <= sat_target <= 20, f"Saturday target {sat_target} out of bounds"
+    assert 12 <= sun_target <= 20, f"Sunday target {sun_target} out of bounds"
 
 
 def test_active_operating_hours(sample_settings):
@@ -94,8 +94,8 @@ def test_can_apply_now_guardrails(sample_settings):
     assert can_apply is False
     assert "daily quota reached" in reason
 
-    # 3. At or above hard 24h cap (45) -> blocked
-    mock_store.count_recent_submissions.return_value = 45
+    # 3. At or above hard 24h cap (48) -> blocked
+    mock_store.count_recent_submissions.return_value = 48
     can_apply, reason = engine.can_apply_now(weekday_date)
     assert can_apply is False
     assert "Hard 24-hour application ceiling reached" in reason
