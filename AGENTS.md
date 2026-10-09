@@ -73,6 +73,7 @@ The architecture strictly decouples job stream discovery, form field introspecti
 | **Discovery Agent** | [`src/agents/discovery_agent.py`](file:///Users/swikar/TechProject/AutoApply/src/agents/discovery_agent.py) | Python 3.14+ / Playwright | LinkedIn search pagination, infinite scroll card extraction, Easy Apply filtering, and queue dispatching. |
 | **State Machine (FSM)**| [`src/core/fsm.py`](file:///Users/swikar/TechProject/AutoApply/src/core/fsm.py) | Python 3.14+ | Finite State Machine governing valid transitions (`DISCOVERED`, `EVALUATED`, `FORM_MAPPED`, `SUBMITTED`, `FAILED`, `SKIPPED`). |
 | **State Database** | [`src/core/database.py`](file:///Users/swikar/TechProject/AutoApply/src/core/database.py) | SQLite 3 (WAL Mode) | Persistent storage for job postings, company names, submission timestamps, error traces, and status metrics. |
+| **Human Pacing Engine** | [`src/core/human_pacing.py`](file:///Users/swikar/TechProject/AutoApply/src/core/human_pacing.py) | Python 3.14+ | Rolling 24-hour application ceiling, stochastic daily targets, operating hours window (09:00-21:30), reading delays, step delays, and keystroke cadence. |
 | **LLM Reasoning** | [`src/core/llm_client.py`](file:///Users/swikar/TechProject/AutoApply/src/core/llm_client.py) | Google GenAI SDK | Gemini 2.5 Flash integration for open-ended or unforeseen application questions with strict candidate truth grounding. |
 | **Candidate Profile** | [`config/truth_matrix.yaml`](file:///Users/swikar/TechProject/AutoApply/config/truth_matrix.yaml) | YAML | Candidate ground truth: contact details, work authorization, salary expectations, skills experience years, EEO responses. |
 | **Operational Config** | [`config/settings.yaml`](file:///Users/swikar/TechProject/AutoApply/config/settings.yaml) | YAML | Search queries, target locations, stealth delay ranges, auto-submit flags, and rate limiting parameters. |
@@ -203,6 +204,21 @@ The architecture strictly decouples job stream discovery, form field introspecti
   2. Single-pass JS card extraction triages 25 search cards in $<50\text{ ms}$, instantly filtering out California locations, already-applied jobs, staffing agencies, and non-Easy-Apply postings without triggering sequential 1.2s card clicks.
   3. Automatic multi-page stream pagination advances to subsequent result pages (`&start=25`, `&start=50`, etc.) to sustain continuous autonomous application throughput.
 
+### ADR-009: Human-Like Behavioral Mimicry and 24-Hour Rolling Quota Enforcement
+* **Status**: Accepted & Enforced
+* **Decision**: Enforce a comprehensive Human Behavioral Mimicry and Anti-Bot Pacing Engine (`HumanPacingEngine`) across all discovery, form filling, and stream operations.
+* **Engineering Rationale**:
+  1. **Strict 24-Hour Application Ceiling**: LinkedIn enforces an internal rate limit ceiling (~50 applications per 24 hours). The engine queries `ApplicationStateStore.count_recent_submissions(hours=24)` and enforces a hard ceiling of **45 applications** within any rolling 24-hour window, preventing account restriction.
+  2. **Stochastic Daily Quota**: To mimic natural human job-hunting variability, compute a floating daily target seeded deterministically by `date.toordinal()`:
+     - Weekdays (Mon-Fri): Gaussian distribution clamped between 16 and 38 applications ($\mu = 26, \sigma = 5$).
+     - Weekends (Sat-Sun): Reduced volume between 6 and 14 applications.
+  3. **Natural Operating Hours Window**: Applications are strictly restricted to local hours between 09:00 and 21:30. Stream loops cleanly idle or halt outside this window.
+  4. **Micro-Jitter & Natural Delays**:
+     - Pre-apply reading delay: 12 to 28 seconds of dwell time on the posting before clicking Easy Apply.
+     - Step transition delay: 1.8 to 3.8 seconds between modal form steps.
+     - Inter-application delay: 45 to 110 seconds between applications, with a 15% probability of an extended 6 to 12 minute break (360-720s).
+     - Keystroke cadence: Text inputs use Playwright's `press_sequentially(text, delay=random.randint(60, 130))` with automatic fallback to instant fill on failure.
+
 ---
 
 ## 5. Live Dynamic Memory & Active Operational Invariants
@@ -237,11 +253,14 @@ The architecture strictly decouples job stream discovery, form field introspecti
      - Submit: `button[aria-label="Submit application"]`, `button:has-text("Submit application")`
      - Dismiss: `button[aria-label="Dismiss"]`, `button:has-text("Done")`
 
-4. **Stealth & Anti-Detection Rules**:
-   - Never use fixed delays. Always randomize sleep timers:
-     - Form step transition: `0.8s - 1.8s`
-     - Typing simulation: `15ms - 45ms` per keystroke
-     - Post-submission wait: `1.5s - 3.0s`
+4. **Stealth & Anti-Detection Rules (ADR-009 Pacing Standards)**:
+   - Never use fixed delays. Enforce natural randomized timing distributions:
+     - Pre-apply reading pause: `12.0s - 28.0s`
+     - Modal step transitions: `1.8s - 3.8s`
+     - Typing simulation cadence: `60ms - 130ms` per keystroke (`25ms - 50ms` for long essays)
+     - Inter-job delays: `45.0s - 110.0s` with 15% chance of 6-12 minute rest break (`360s - 720s`)
+     - Operating window: `09:00 - 21:30` local time only
+     - Rolling 24h cap: Hard ceiling `45` applications (strictly below LinkedIn's 50 limit)
    - Always run with viewport `1280x800` or higher to prevent mobile responsive layouts from hiding desktop action buttons.
    - User agent string must match contemporary macOS Chrome desktop.
 

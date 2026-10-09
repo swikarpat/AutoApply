@@ -1,10 +1,12 @@
 import asyncio
 import json
 import os
+import random
 import re
 import yaml
 from typing import Any, Dict, List, Optional
 from playwright.async_api import Page, Locator
+from src.core.human_pacing import HumanPacingEngine
 from src.core.llm_client import GeminiFlashClient
 from src.mcp.tools.browser import StealthBrowserTool
 
@@ -16,10 +18,12 @@ class FormAutomationAgent:
         llm_client: GeminiFlashClient,
         config_path: str = "config/settings.yaml",
         truth_path: str = "config/truth_matrix.yaml",
-        auto_submit: Optional[bool] = None
+        auto_submit: Optional[bool] = None,
+        pacing: Optional[HumanPacingEngine] = None,
     ):
         self.browser = browser_tool
         self.llm = llm_client
+        self.pacing = pacing
         
         with open(config_path, "r", encoding="utf-8") as f:
             self.settings = yaml.safe_load(f)
@@ -38,6 +42,24 @@ class FormAutomationAgent:
         # 100% Autonomous: HITL is permanently disabled; always auto-submit
         self.auto_submit = True
         self.step_delay = self.settings.get("automation_safety", {}).get("step_inspection_delay_seconds", 0.4)
+
+    async def _type_human(self, page: Page, inp: Locator, text: str):
+        """
+        Types text with realistic human keystroke pacing instead of instant .fill().
+        Uses Playwright's press_sequentially with randomized micro-jitter delay.
+        """
+        if not text:
+            await inp.fill("")
+            return
+        try:
+            await inp.click()
+            await inp.fill("")
+            # Keystroke cadence: 60-130ms for standard text, 25-50ms for longer text essays
+            delay_ms = random.randint(25, 50) if len(text) > 80 else random.randint(60, 130)
+            await inp.press_sequentially(str(text), delay=delay_ms)
+        except Exception:
+            # Fallback to direct fill if DOM detached or timing conflict occurs
+            await inp.fill(str(text))
 
     async def uncheck_follow_company(self, page: Page, modal: Locator) -> bool:
         """
@@ -267,7 +289,7 @@ class FormAutomationAgent:
                 # Phone number
                 if any(k in combined for k in ["phone", "mobile"]):
                     phone = self.truth.get("candidate", {}).get("phone", "9514631792")
-                    await inp.fill(phone)
+                    await self._type_human(page, inp, phone)
                     count += 1
                     continue
 
@@ -279,7 +301,7 @@ class FormAutomationAgent:
                     val = self.llm.resolve_form_question(label_text, None, self.truth)
 
                 if val:
-                    await inp.fill(str(val))
+                    await self._type_human(page, inp, str(val))
                     count += 1
             except Exception:
                 continue
@@ -538,7 +560,8 @@ class FormAutomationAgent:
                 # D. STRICT GUARANTEE: Uncheck Follow Company
                 await self.uncheck_follow_company(page, modal)
 
-                await asyncio.sleep(self.step_delay)
+                step_delay = self.pacing.get_step_delay() if self.pacing else round(random.uniform(1.8, 3.8), 2)
+                await asyncio.sleep(step_delay)
 
                 submit_btn = modal.locator(
                     'button[aria-label="Submit application"], '
@@ -548,6 +571,9 @@ class FormAutomationAgent:
                 if await submit_btn.is_visible():
                     # Uncheck follow company right before submitting!
                     await self.uncheck_follow_company(page, modal)
+
+                    submit_delay = self.pacing.get_step_delay() if self.pacing else round(random.uniform(1.8, 3.8), 2)
+                    await asyncio.sleep(submit_delay)
 
                     print("  [Submit] 🚀 Auto-submitting application...")
                     await submit_btn.click(force=True)
@@ -588,8 +614,10 @@ class FormAutomationAgent:
                 if await next_btn.is_visible():
                     btn_text = (await next_btn.inner_text()).strip()
                     print(f"  [Navigation] Clicking '{btn_text}'...")
+                    nav_delay = self.pacing.get_step_delay() if self.pacing else round(random.uniform(1.8, 3.8), 2)
+                    await asyncio.sleep(nav_delay)
                     await next_btn.click(force=True)
-                    await asyncio.sleep(0.6)
+                    await asyncio.sleep(0.8)
 
                     # Validation error recovery
                     error_badge = modal.locator('.artdeco-inline-feedback--error, .fb-form-element--error').first

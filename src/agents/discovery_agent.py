@@ -1,7 +1,9 @@
+import asyncio
 import hashlib
 import json
+import random
 import urllib.parse
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from playwright.async_api import Page
 from src.core.database import ApplicationStateStore
 from src.core.llm_client import GeminiFlashClient
@@ -10,10 +12,28 @@ from src.mcp.tools.browser import StealthBrowserTool
 
 
 class DiscoveryAgent:
-    def __init__(self, state_store: ApplicationStateStore, browser_tool: StealthBrowserTool, llm_client: GeminiFlashClient):
+    def __init__(
+        self,
+        state_store: ApplicationStateStore,
+        browser_tool: StealthBrowserTool,
+        llm_client: GeminiFlashClient,
+        pacing: Optional[Any] = None,
+    ):
         self.db = state_store
         self.browser = browser_tool
         self.llm = llm_client
+        self.pacing = pacing
+
+    async def simulate_reading_delay(self, pacing: Optional[Any] = None) -> float:
+        """Simulates human reading delay before opening Easy Apply modal (12 to 28 seconds)."""
+        engine = pacing or self.pacing
+        if engine and hasattr(engine, "get_reading_delay"):
+            delay = engine.get_reading_delay()
+        else:
+            delay = round(random.uniform(12.0, 28.0), 2)
+        print(f"  [Pacing] 📖 Simulating human reading pause ({delay:.1f}s)...")
+        await asyncio.sleep(delay)
+        return delay
 
     def _generate_job_id(self, url: str) -> str:
         return hashlib.sha256(url.strip().lower().encode()).hexdigest()[:16]

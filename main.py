@@ -3,6 +3,7 @@ import asyncio
 import os
 import sys
 import yaml
+from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
@@ -13,6 +14,7 @@ from src.agents.form_agent import FormAutomationAgent
 from src.agents.match_agent import MatchAgent
 from src.core.database import ApplicationStateStore
 from src.core.fsm import SupervisorFSM
+from src.core.human_pacing import HumanPacingEngine
 from src.core.llm_client import GeminiFlashClient
 from src.core.schemas import ApplicationStatus, JobPosting
 from src.mcp.tools.browser import StealthBrowserTool
@@ -108,6 +110,15 @@ async def command_apply_single(url: str, headless: bool = False):
     """Executes the 100% autonomous pipeline for a single target job posting URL."""
     settings, _ = load_configurations()
     store = ApplicationStateStore()
+    pacing = HumanPacingEngine(settings, store)
+
+    # Pre-flight pacing guardrail check
+    can_apply, reason = pacing.can_apply_now()
+    if not can_apply:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        console.print(f"[bold red][Pacing Guardrail @ {now_str}][/bold red] Cannot apply right now: {reason}")
+        return
+
     llm_client = GeminiFlashClient(model_name=settings.get("llm_routing", {}).get("model", "gemini-2.5-flash"))
 
     is_headless = headless or settings.get("automation_safety", {}).get("headless_browser", True)
@@ -117,9 +128,9 @@ async def command_apply_single(url: str, headless: bool = False):
     )
     await browser_tool.initialize()
 
-    discovery_agent = DiscoveryAgent(store, browser_tool, llm_client)
+    discovery_agent = DiscoveryAgent(store, browser_tool, llm_client, pacing=pacing)
     match_agent = MatchAgent(store, llm_client)
-    form_agent = FormAutomationAgent(browser_tool, llm_client, auto_submit=True)
+    form_agent = FormAutomationAgent(browser_tool, llm_client, auto_submit=True, pacing=pacing)
     fsm = SupervisorFSM(store, discovery_agent, match_agent, form_agent)
 
     try:
@@ -133,6 +144,21 @@ async def command_stream(headless: bool = False):
     """Executes the high-speed autonomous stream applier queue matching search criteria in settings.yaml."""
     settings, truth = load_configurations()
     store = ApplicationStateStore()
+    pacing = HumanPacingEngine(settings, store)
+
+    # 1. Pre-flight Pacing & Anti-Bot Guardrail Check
+    can_apply, reason = pacing.can_apply_now()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if not can_apply:
+        console.print(Panel(
+            f"[bold yellow]Application stream paused by Anti-Bot Pacing Engine @ {now_str}:[/bold yellow]\n\n"
+            f"[bold red]Reason:[/bold red] {reason}\n\n"
+            f"[dim]The daemon will safely idle to protect account reputation and comply with rolling limits.[/dim]",
+            title="[Pacing Guardrail Active]",
+            expand=False
+        ))
+        return
+
     llm_client = GeminiFlashClient(model_name=settings.get("llm_routing", {}).get("model", "gemini-2.5-flash"))
 
     is_headless = headless or settings.get("automation_safety", {}).get("headless_browser", True)
@@ -140,8 +166,8 @@ async def command_stream(headless: bool = False):
     browser = StealthBrowserTool(headless=is_headless, user_data_dir=user_data_dir)
     await browser.initialize()
 
-    discovery_agent = DiscoveryAgent(store, browser, llm_client)
-    form_agent = FormAutomationAgent(browser, llm_client, auto_submit=True)
+    discovery_agent = DiscoveryAgent(store, browser, llm_client, pacing=pacing)
+    form_agent = FormAutomationAgent(browser, llm_client, auto_submit=True, pacing=pacing)
 
     try:
         page = await browser.get_page("https://www.linkedin.com/jobs/")
@@ -189,6 +215,8 @@ async def command_stream(headless: bool = False):
             base_params["f_TPR"] = time_range
 
         max_apps = settings.get("automation_safety", {}).get("max_applications_per_run", 30)
+        todays_target = pacing.get_todays_target()
+        recent_24h = store.count_recent_submissions(24)
         applied_count = 0
         max_search_pages = 10
 
@@ -196,12 +224,19 @@ async def command_stream(headless: bool = False):
             f"[bold cyan]Target Roles:[/bold cyan] {', '.join(titles)}\n"
             f"[bold cyan]Location:[/bold cyan] {location} | [bold cyan]Recency:[/bold cyan] Newest First ({time_range})\n"
             f"[bold cyan]Company Filter:[/bold cyan] >= 5,000 Employees | [bold cyan]Headless Mode:[/bold cyan] {is_headless}\n"
-            f"[bold cyan]Auto-Submit:[/bold cyan] {auto_submit_flag} (Zero manual confirmation needed)",
+            f"[bold cyan]Pacing Engine:[/bold cyan] Rolling 24h: {recent_24h}/{pacing.hard_24h_cap} | Today's Stochastic Quota: {todays_target}\n"
+            f"[bold cyan]Auto-Submit:[/bold cyan] True (100% Autonomous, zero manual confirmation needed)",
             title="AutoApply High-Speed Stream Engine ⚡",
             expand=False
         ))
 
         for page_idx in range(1, max_search_pages + 1):
+            can_apply, reason = pacing.can_apply_now()
+            if not can_apply:
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                console.print(f"\n[bold yellow]↳ [Pacing Guardrail @ {now_str}][/bold yellow] {reason}. Cleanly ending stream search.")
+                break
+
             if applied_count >= max_apps:
                 console.print(f"[yellow]Reached application cap of {max_apps} for this run.[/yellow]")
                 break
@@ -255,6 +290,12 @@ async def command_stream(headless: bool = False):
             console.print(f"[bold cyan]Discovered {total_cards} job cards on Page {page_idx}. Running instant pre-filter...[/bold cyan]")
 
             for meta in cards_meta:
+                can_apply, reason = pacing.can_apply_now()
+                if not can_apply:
+                    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    console.print(f"\n[bold yellow]↳ [Pacing Guardrail @ {now_str}][/bold yellow] {reason}. Cleanly ending stream session.")
+                    break
+
                 if applied_count >= max_apps:
                     break
 
@@ -327,8 +368,11 @@ async def command_stream(headless: bool = False):
                         store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": reason})
                         continue
 
-                    console.print(f"  [green]↳ ✓ Eligible Employer ({reason})! Executing autonomous Easy Apply...[/green]")
+                    console.print(f"  [green]↳ ✓ Eligible Employer ({reason})! Simulating natural reading before Easy Apply...[/green]")
                     store.update_job_status(job_id, ApplicationStatus.FORM_MAPPED)
+
+                    # Simulate realistic reading delay before opening Easy Apply modal (12-28s)
+                    await discovery_agent.simulate_reading_delay(pacing)
 
                     # Execute 100% autonomous Easy Apply
                     res = await form_agent.process_linkedin_application(page, job_id, card_title, company_name)
@@ -336,11 +380,18 @@ async def command_stream(headless: bool = False):
                         applied_count += 1
                         store.update_job_status(job_id, ApplicationStatus.SUBMITTED, metadata=res)
                         console.print(f"[bold green]  🎉 SUBMITTED SUCCESSFULLY! (Total Applied: {applied_count}/{max_apps})[/bold green]")
+
+                        # Inter-application delay (45 to 110s, with 15% chance of 6-12 min break)
+                        inter_delay = pacing.get_inter_job_delay()
+                        if inter_delay >= 300:
+                            console.print(f"  [bold cyan]☕ Taking an extended natural break ({inter_delay/60:.1f} mins) before next application...[/bold cyan]")
+                        else:
+                            console.print(f"  [cyan]⏳ Inter-application pacing delay: {inter_delay:.1f}s...[/cyan]")
+                        await asyncio.sleep(inter_delay)
                     else:
                         store.update_job_status(job_id, ApplicationStatus.FAILED, metadata=res)
                         console.print(f"  [dim]  Application ended with status: {res.get('status')}[/dim]")
-
-                    await asyncio.sleep(settings.get("automation_safety", {}).get("delay_between_jobs_seconds", 1.0))
+                        await asyncio.sleep(settings.get("automation_safety", {}).get("delay_between_jobs_seconds", 1.0))
                 except Exception as e:
                     console.print(f"  [red]Error processing card {idx+1}: {e}[/red]")
                     continue

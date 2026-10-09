@@ -53,3 +53,14 @@ automation_safety:
   step_inspection_delay_seconds: 0.4        # Accelerated modal step execution
   delay_between_jobs_seconds: 1.0           # Fast inter-job transition delay
   max_applications_per_run: 30
+
+pacing:
+  enabled: true
+  active_start_hour: 9
+  active_end_hour: 21
+  active_end_minute: 30
+  min_daily_target: 16
+  max_daily_target: 38
+  weekend_min_target: 6
+  weekend_max_target: 14
+  hard_24h_cap: 45

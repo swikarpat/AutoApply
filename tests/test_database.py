@@ -49,3 +49,9 @@ def test_state_store_lifecycle(tmp_path):
     assert evaluated_jobs[0]["job_id"] == job_hash
     assert store.get_job_status(job_hash) == ApplicationStatus.EVALUATED
     assert store.get_job_status("non_existent_job_id") is None
+    assert store.count_recent_submissions(24) == 0
+
+    # 6. Verify Recent Submissions Count
+    store.update_job_status(job_hash, ApplicationStatus.SUBMITTED)
+    assert store.get_job_status(job_hash) == ApplicationStatus.SUBMITTED
+    assert store.count_recent_submissions(24) == 1

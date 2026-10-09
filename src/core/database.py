@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 from src.core.schemas import ApplicationStatus, JobPosting, MatchEvaluation
 
@@ -171,6 +171,18 @@ class ApplicationStateStore:
                 except ValueError:
                     return None
             return None
+
+    def count_recent_submissions(self, hours: int = 24) -> int:
+        """Counts how many applications reached SUBMITTED status within the past N hours."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM jobs WHERE status = ? AND updated_at >= ?",
+                (ApplicationStatus.SUBMITTED.value, cutoff),
+            )
+            row = cursor.fetchone()
+            return row["count"] if row else 0
 
     def get_jobs_by_status(self, status: ApplicationStatus) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
