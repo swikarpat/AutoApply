@@ -64,3 +64,8 @@ pacing:
   weekend_min_target: 6
   weekend_max_target: 14
   hard_24h_cap: 45
+
+notifications:
+  enabled: true                             # Send desktop alert when daily application cap is hit
+  sound: "Glass"                            # macOS sound name (Glass, Ping, Hero, Bottle, etc.)
+  alert_on_daily_cap: true                  # Ping user when daily stochastic quota or hard cap is reached

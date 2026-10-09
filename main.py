@@ -16,6 +16,7 @@ from src.core.database import ApplicationStateStore
 from src.core.fsm import SupervisorFSM
 from src.core.human_pacing import HumanPacingEngine
 from src.core.llm_client import GeminiFlashClient
+from src.core.notifier import notify_daily_cap_reached
 from src.core.schemas import ApplicationStatus, JobPosting
 from src.mcp.tools.browser import StealthBrowserTool
 
@@ -173,6 +174,16 @@ async def command_stream(headless: bool = False):
             title="[Pacing Guardrail Active]",
             expand=False
         ))
+        if any(k in reason.lower() for k in ["quota reached", "ceiling reached", "cap"]):
+            notif_cfg = settings.get("notifications", {})
+            if notif_cfg.get("enabled", True) and notif_cfg.get("alert_on_daily_cap", True):
+                notify_daily_cap_reached(
+                    current_count=store.count_recent_submissions(24),
+                    target_quota=pacing.get_todays_target(),
+                    hard_cap=pacing.hard_24h_cap,
+                    reason=reason,
+                    sound=notif_cfg.get("sound", "Glass")
+                )
         return
 
     llm_client = GeminiFlashClient(model_name=settings.get("llm_routing", {}).get("model", "gemini-2.5-flash"))
@@ -310,6 +321,16 @@ async def command_stream(headless: bool = False):
                 if not can_apply:
                     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     console.print(f"\n[bold yellow]↳ [Pacing Guardrail @ {now_str}][/bold yellow] {reason}. Cleanly ending stream session.")
+                    if any(k in reason.lower() for k in ["quota reached", "ceiling reached", "cap"]):
+                        notif_cfg = settings.get("notifications", {})
+                        if notif_cfg.get("enabled", True) and notif_cfg.get("alert_on_daily_cap", True):
+                            notify_daily_cap_reached(
+                                current_count=store.count_recent_submissions(24),
+                                target_quota=todays_target,
+                                hard_cap=pacing.hard_24h_cap,
+                                reason=reason,
+                                sound=notif_cfg.get("sound", "Glass")
+                            )
                     break
 
                 if applied_count >= max_apps:
@@ -396,6 +417,18 @@ async def command_stream(headless: bool = False):
                         applied_count += 1
                         store.update_job_status(job_id, ApplicationStatus.SUBMITTED, metadata=res)
                         console.print(f"[bold green]  🎉 SUBMITTED SUCCESSFULLY! (Total Applied: {applied_count}/{max_apps})[/bold green]")
+
+                        # Check if this submission hit the daily quota or hard cap
+                        curr_recent = store.count_recent_submissions(24)
+                        if curr_recent >= todays_target or curr_recent >= pacing.hard_24h_cap:
+                            notif_cfg = settings.get("notifications", {})
+                            if notif_cfg.get("enabled", True) and notif_cfg.get("alert_on_daily_cap", True):
+                                notify_daily_cap_reached(
+                                    current_count=curr_recent,
+                                    target_quota=todays_target,
+                                    hard_cap=pacing.hard_24h_cap,
+                                    sound=notif_cfg.get("sound", "Glass")
+                                )
 
                         # Inter-application delay (45 to 110s, with 15% chance of 6-12 min break)
                         inter_delay = pacing.get_inter_job_delay()

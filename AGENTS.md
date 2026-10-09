@@ -74,6 +74,7 @@ The architecture strictly decouples job stream discovery, form field introspecti
 | **State Machine (FSM)**| [`src/core/fsm.py`](file:///Users/swikar/TechProject/AutoApply/src/core/fsm.py) | Python 3.14+ | Finite State Machine governing valid transitions (`DISCOVERED`, `EVALUATED`, `FORM_MAPPED`, `SUBMITTED`, `FAILED`, `SKIPPED`). |
 | **State Database** | [`src/core/database.py`](file:///Users/swikar/TechProject/AutoApply/src/core/database.py) | SQLite 3 (WAL Mode) | Persistent storage for job postings, company names, submission timestamps, error traces, and status metrics. |
 | **Human Pacing Engine** | [`src/core/human_pacing.py`](file:///Users/swikar/TechProject/AutoApply/src/core/human_pacing.py) | Python 3.14+ | Rolling 24-hour application ceiling, stochastic daily targets, operating hours window (09:00-21:30), reading delays, step delays, and keystroke cadence. |
+| **Alert Notifier** | [`src/core/notifier.py`](file:///Users/swikar/TechProject/AutoApply/src/core/notifier.py) | Python 3.14+ / osascript | Native macOS desktop banner and audio chime dispatch with daily deduplication for application cap events. |
 | **LLM Reasoning** | [`src/core/llm_client.py`](file:///Users/swikar/TechProject/AutoApply/src/core/llm_client.py) | Google GenAI SDK | Gemini 2.5 Flash integration for open-ended or unforeseen application questions with strict candidate truth grounding. |
 | **Candidate Profile** | [`config/truth_matrix.yaml`](file:///Users/swikar/TechProject/AutoApply/config/truth_matrix.yaml) | YAML | Candidate ground truth: contact details, work authorization, salary expectations, skills experience years, EEO responses. |
 | **Operational Config** | [`config/settings.yaml`](file:///Users/swikar/TechProject/AutoApply/config/settings.yaml) | YAML | Search queries, target locations, stealth delay ranges, auto-submit flags, and rate limiting parameters. |
@@ -277,6 +278,10 @@ The architecture strictly decouples job stream discovery, form field introspecti
 7. **Concurrency & Log Hygiene**:
    - Database operations enforce SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL;` and `PRAGMA synchronous=NORMAL;`) so CLI commands like `./autoapply stats` never lock the database during active background daemon execution.
    - `data/stream_out.log` and `data/stream_err.log` are automatically monitored and rotated if size exceeds 15MB.
+
+8. **Daily Cap Alert System**:
+   - Dispatches a native macOS desktop banner notification with audio chime (`Glass`) whenever the stochastic daily quota or hard 24h ceiling is reached.
+   - Enforces calendar-date deduplication (`data/.last_cap_alert`) ensuring the user receives exactly one notification per day rather than repetitive alerts on recurring launchd intervals.
 
 ---
 
