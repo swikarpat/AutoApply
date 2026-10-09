@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.autoapply.stream</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>cd /Users/swikar/TechProject/AutoApply &amp;&amp; .venv/bin/python main.py stream</string>
+    </array>
+
+    <!-- Run every 2 hours (7200 seconds) -->
+    <key>StartInterval</key>
+    <integer>7200</integer>
+
+    <!-- Run immediately upon load/boot -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Standard log outputs -->
+    <key>StandardOutPath</key>
+    <string>/Users/swikar/TechProject/AutoApply/data/stream_out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/swikar/TechProject/AutoApply/data/stream_err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+</dict>
+</plist>

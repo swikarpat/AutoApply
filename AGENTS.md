@@ -323,6 +323,28 @@ playwright install chromium
 .venv/bin/pytest tests/test_database.py
 ```
 
+### Background Daemon Automation (`launchd` on macOS)
+```bash
+# 1. Template located in repository:
+templates/com.autoapply.stream.plist
+
+# 2. Installed at:
+~/Library/LaunchAgents/com.autoapply.stream.plist
+
+# 3. Load / Register the 2-hour recurring background service:
+launchctl load ~/Library/LaunchAgents/com.autoapply.stream.plist
+
+# 4. Inspect live stdout / stderr logs:
+tail -f data/stream_out.log
+tail -f data/stream_err.log
+
+# 5. Check real-time application database metrics:
+./autoapply stats
+
+# 6. Stop / Unload the background service:
+launchctl unload ~/Library/LaunchAgents/com.autoapply.stream.plist
+```
+
 ---
 
 ## 7. Key References & Associated Artifacts
