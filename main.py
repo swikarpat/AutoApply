@@ -140,8 +140,24 @@ async def command_apply_single(url: str, headless: bool = False):
         await browser_tool.close()
 
 
+def rotate_logs_if_exceeded(log_dir: str = "data", max_size_mb: int = 15):
+    """Rotates log files if they exceed max_size_mb to prevent unbounded log growth."""
+    for filename in ["stream_out.log", "stream_err.log"]:
+        file_path = os.path.join(log_dir, filename)
+        if os.path.exists(file_path):
+            try:
+                if os.path.getsize(file_path) > max_size_mb * 1024 * 1024:
+                    old_path = f"{file_path}.old"
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+                    os.rename(file_path, old_path)
+            except Exception:
+                pass
+
+
 async def command_stream(headless: bool = False):
     """Executes the high-speed autonomous stream applier queue matching search criteria in settings.yaml."""
+    rotate_logs_if_exceeded()
     settings, truth = load_configurations()
     store = ApplicationStateStore()
     pacing = HumanPacingEngine(settings, store)

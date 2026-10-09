@@ -271,6 +271,13 @@ The architecture strictly decouples job stream discovery, form field introspecti
      - `config/truth_matrix.yaml` (contains real candidate phone, email, address, and demographic data)
      - `archive/` (contains experimental scripts and scraped dumps)
 
+6. **Timezone Alignment Invariant**:
+   - Operating hours (`09:00 - 21:30`) strictly evaluate against the **user's current local timezone** (`datetime.now().time()`) rather than remote server clocks or US employer timezones.
+
+7. **Concurrency & Log Hygiene**:
+   - Database operations enforce SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL;` and `PRAGMA synchronous=NORMAL;`) so CLI commands like `./autoapply stats` never lock the database during active background daemon execution.
+   - `data/stream_out.log` and `data/stream_err.log` are automatically monitored and rotated if size exceeds 15MB.
+
 ---
 
 ## 6. Development, Testing & Production Runbook
