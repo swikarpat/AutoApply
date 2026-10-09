@@ -569,6 +569,12 @@ def main():
     subparsers.add_parser("unlock", help="Clear the emergency security checkpoint lockfile once resolved")
     subparsers.add_parser("clear-lock", help="Alias for unlock")
 
+    # Command: telemetry
+    telemetry_parser = subparsers.add_parser("telemetry", help="Continuously record system telemetry (CPU, RAM, Disk, Net) to .jsonl")
+    telemetry_parser.add_argument("--log-file", type=str, default="data/telemetry_log.jsonl", help="Destination .jsonl file (default: data/telemetry_log.jsonl)")
+    telemetry_parser.add_argument("--interval", type=float, default=5.0, help="Sampling interval in seconds (default: 5.0)")
+    telemetry_parser.add_argument("--samples", type=int, default=None, help="Optional max samples to record")
+
     args = parser.parse_args()
 
     if not args.command or args.command in ["stream", "run"]:
@@ -582,6 +588,9 @@ def main():
         asyncio.run(command_login())
     elif args.command in ["unlock", "clear-lock"]:
         command_unlock()
+    elif args.command == "telemetry":
+        from src.core.telemetry import run_telemetry_loop
+        run_telemetry_loop(log_file=args.log_file, interval_seconds=args.interval, max_samples=args.samples)
 
 
 if __name__ == "__main__":

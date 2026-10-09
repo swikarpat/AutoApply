@@ -14,6 +14,7 @@ jinja2>=3.1.3
 # Telemetry & Reliability
 opentelemetry-api>=1.24.0
 opentelemetry-sdk>=1.24.0
+psutil>=7.0.0
 tenacity>=8.2.3
 
 # Testing & Utilities

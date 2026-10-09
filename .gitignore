@@ -18,6 +18,7 @@ data/
 *.pdf
 *.db
 *.sqlite3
+*.jsonl
 .env
 .env.local
 

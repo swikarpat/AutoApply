@@ -75,6 +75,7 @@ The architecture strictly decouples job stream discovery, form field introspecti
 | **State Database** | [`src/core/database.py`](file:///Users/swikar/TechProject/AutoApply/src/core/database.py) | SQLite 3 (WAL Mode) | Persistent storage for job postings, company names, submission timestamps, error traces, and status metrics. |
 | **Human Pacing Engine** | [`src/core/human_pacing.py`](file:///Users/swikar/TechProject/AutoApply/src/core/human_pacing.py) | Python 3.14+ | Rolling 24-hour application ceiling, stochastic daily targets, operating hours window (09:00-21:30), reading delays, step delays, and keystroke cadence. |
 | **Alert Notifier** | [`src/core/notifier.py`](file:///Users/swikar/TechProject/AutoApply/src/core/notifier.py) | Python 3.14+ / osascript | Native macOS desktop banner and audio chime dispatch with daily deduplication for application cap events. |
+| **System Telemetry** | [`src/core/telemetry.py`](file:///Users/swikar/TechProject/AutoApply/src/core/telemetry.py) / [`telemetry_collector.py`](file:///Users/swikar/TechProject/AutoApply/telemetry_collector.py) | Python 3.14+ / psutil | Continuous system resource telemetry recording (CPU, RAM, Disk, Network) to streaming JSON Lines (.jsonl). |
 | **LLM Reasoning** | [`src/core/llm_client.py`](file:///Users/swikar/TechProject/AutoApply/src/core/llm_client.py) | Google GenAI SDK | Gemini 2.5 Flash integration for open-ended or unforeseen application questions with strict candidate truth grounding. |
 | **Candidate Profile** | [`config/truth_matrix.yaml`](file:///Users/swikar/TechProject/AutoApply/config/truth_matrix.yaml) | YAML | Candidate ground truth: contact details, work authorization, salary expectations, skills experience years, EEO responses. |
 | **Operational Config** | [`config/settings.yaml`](file:///Users/swikar/TechProject/AutoApply/config/settings.yaml) | YAML | Search queries, target locations, stealth delay ranges, auto-submit flags, and rate limiting parameters. |
@@ -335,6 +336,11 @@ playwright install chromium
 
 # 7. Reset Emergency Checkpoint Lock (After manual login / CAPTCHA resolution)
 ./autoapply unlock
+
+# 8. Continuous System Telemetry Logging (CPU, RAM, Disk, Net to JSONL)
+./autoapply telemetry --log-file data/telemetry_log.jsonl --interval 5
+# Or via standalone script:
+python telemetry_collector.py --log-file telemetry_log.jsonl --interval 5
 ```
 
 ### Automated Test Suite
@@ -350,6 +356,9 @@ playwright install chromium
 
 # Test database CRUD and FSM state persistence
 .venv/bin/pytest tests/test_database.py
+
+# Test system telemetry collector
+.venv/bin/pytest tests/test_telemetry.py
 ```
 
 ### Background Daemon Automation (`launchd` on macOS)
@@ -383,5 +392,6 @@ launchctl unload ~/Library/LaunchAgents/com.autoapply.stream.plist
 * **Job Discovery Engine**: [`src/agents/discovery_agent.py`](file:///Users/swikar/TechProject/AutoApply/src/agents/discovery_agent.py)
 * **State Machine & States**: [`src/core/fsm.py`](file:///Users/swikar/TechProject/AutoApply/src/core/fsm.py)
 * **Database Layer**: [`src/core/database.py`](file:///Users/swikar/TechProject/AutoApply/src/core/database.py)
+* **System Telemetry Collector**: [`src/core/telemetry.py`](file:///Users/swikar/TechProject/AutoApply/src/core/telemetry.py) / [`telemetry_collector.py`](file:///Users/swikar/TechProject/AutoApply/telemetry_collector.py)
 * **Truth Matrix Configuration**: [`config/truth_matrix.yaml`](file:///Users/swikar/TechProject/AutoApply/config/truth_matrix.yaml)
 * **System Settings**: [`config/settings.yaml`](file:///Users/swikar/TechProject/AutoApply/config/settings.yaml)
