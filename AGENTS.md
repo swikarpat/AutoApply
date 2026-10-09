@@ -220,6 +220,15 @@ The architecture strictly decouples job stream discovery, form field introspecti
      - Inter-application delay: 45 to 110 seconds between applications, with a 15% probability of an extended 6 to 12 minute break (360-720s).
      - Keystroke cadence: Text inputs use Playwright's `press_sequentially(text, delay=random.randint(60, 130))` with automatic fallback to instant fill on failure.
 
+### ADR-010: Emergency Security Checkpoint / CAPTCHA Circuit Breaker
+* **Status**: Accepted & Enforced
+* **Decision**: Implement an immediate fail-safe circuit breaker abort upon encountering any LinkedIn security challenge, checkpoint URL, Arkose Labs iframe, or CAPTCHA container.
+* **Engineering Rationale**:
+  1. Prevents automated headless daemons from attempting inputs during account security verification, preventing permanent account restriction.
+  2. Dispatches an urgent macOS desktop notification with sound `"Sosumi"` alerting the user that manual verification is required.
+  3. Creates an emergency lockfile at `data/.checkpoint_lock`. While active, all subsequent `main.py stream` and `apply` invocations abort immediately at startup without generating network traffic.
+  4. Once manually resolved via `./autoapply login`, the candidate clears the lock using `./autoapply unlock`.
+
 ---
 
 ## 5. Live Dynamic Memory & Active Operational Invariants
@@ -283,6 +292,11 @@ The architecture strictly decouples job stream discovery, form field introspecti
    - Dispatches a native macOS desktop banner notification with audio chime (`Glass`) whenever the stochastic daily quota or hard 24h ceiling is reached.
    - Enforces calendar-date deduplication (`data/.last_cap_alert`) ensuring the user receives exactly one notification per day rather than repetitive alerts on recurring launchd intervals.
 
+9. **Security Checkpoint Circuit Breaker Invariant**:
+   - URL patterns (`/checkpoint/`, `/challenge/`, `/uas/consumer-captcha`) or DOM indicators (Arkose Labs iframes, `#captcha-internal`, `"quick security check"`, `"verify it's you"`) immediately trip the circuit breaker.
+   - Creates `data/.checkpoint_lock` and sounds an urgent `"Sosumi"` macOS audio chime.
+   - All subsequent autonomous runs remain strictly paused until manually cleared with `./autoapply unlock`.
+
 ---
 
 ## 6. Development, Testing & Production Runbook
@@ -318,6 +332,9 @@ playwright install chromium
 
 # 6. View Live Application Metrics & Statistics
 ./autoapply stats
+
+# 7. Reset Emergency Checkpoint Lock (After manual login / CAPTCHA resolution)
+./autoapply unlock
 ```
 
 ### Automated Test Suite

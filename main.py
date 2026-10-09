@@ -16,7 +16,13 @@ from src.core.database import ApplicationStateStore
 from src.core.fsm import SupervisorFSM
 from src.core.human_pacing import HumanPacingEngine
 from src.core.llm_client import GeminiFlashClient
-from src.core.notifier import notify_daily_cap_reached
+from src.core.notifier import (
+    alert_checkpoint_detected,
+    create_checkpoint_lock,
+    is_checkpoint_locked,
+    clear_checkpoint_lock,
+    notify_daily_cap_reached,
+)
 from src.core.schemas import ApplicationStatus, JobPosting
 from src.mcp.tools.browser import StealthBrowserTool
 
@@ -107,8 +113,48 @@ async def command_stats():
         console.print(recent_table)
 
 
+def check_circuit_breaker_lock() -> bool:
+    """Returns True if autonomous execution should abort due to active checkpoint lock."""
+    is_locked, lock_info = is_checkpoint_locked()
+    if is_locked:
+        ts = lock_info.get("timestamp", "Unknown") if lock_info else "Unknown"
+        reason = lock_info.get("reason", "Security checkpoint or CAPTCHA detected") if lock_info else "Active lock"
+        url = lock_info.get("url", "LinkedIn Portal") if lock_info else "LinkedIn Portal"
+        console.print(Panel(
+            "[bold red]AUTONOMOUS RUNS PAUSED: ACTIVE SECURITY CHECKPOINT LOCK[/bold red]\n\n"
+            f"[yellow]Detection Time:[/yellow] {ts}\n"
+            f"[yellow]Reason:[/yellow] {reason}\n"
+            f"[yellow]URL:[/yellow] {url}\n\n"
+            "[bold white]Action Required:[/bold white] Manual verification is required to protect your LinkedIn account.\n"
+            "1. Run [bold cyan]./autoapply login[/bold cyan] to resolve the challenge interactively in the browser.\n"
+            "2. Clear the lock by running [bold green]./autoapply unlock[/bold green] (or deleting data/.checkpoint_lock).",
+            title="🚨 CIRCUIT BREAKER ENGAGED",
+            border_style="red",
+            expand=False
+        ))
+        return True
+    return False
+
+
+def command_unlock():
+    """Clears the emergency security checkpoint lockfile once manual resolution is complete."""
+    if clear_checkpoint_lock():
+        console.print(Panel(
+            "[bold green]✓ Checkpoint lock cleared successfully![/bold green]\n\n"
+            "Autonomous stream and apply runs are re-enabled. The background daemon will resume on its next interval.",
+            title="Circuit Breaker Reset",
+            expand=False
+        ))
+    else:
+        console.print("[dim]No active checkpoint lock found (data/.checkpoint_lock does not exist). Autonomous runs are active.[/dim]")
+
+
 async def command_apply_single(url: str, headless: bool = False):
     """Executes the 100% autonomous pipeline for a single target job posting URL."""
+    # 0. Circuit Breaker Check
+    if check_circuit_breaker_lock():
+        return
+
     settings, _ = load_configurations()
     store = ApplicationStateStore()
     pacing = HumanPacingEngine(settings, store)
@@ -158,6 +204,10 @@ def rotate_logs_if_exceeded(log_dir: str = "data", max_size_mb: int = 15):
 
 async def command_stream(headless: bool = False):
     """Executes the high-speed autonomous stream applier queue matching search criteria in settings.yaml."""
+    # 0. Circuit Breaker Check
+    if check_circuit_breaker_lock():
+        return
+
     rotate_logs_if_exceeded()
     settings, truth = load_configurations()
     store = ApplicationStateStore()
@@ -199,6 +249,22 @@ async def command_stream(headless: bool = False):
     try:
         page = await browser.get_page("https://www.linkedin.com/jobs/")
         await asyncio.sleep(1.5)
+
+        # Circuit Breaker: Inspect portal page for security challenge / checkpoint
+        is_cp, cp_reason = await discovery_agent.detect_security_checkpoint(page)
+        if is_cp:
+            create_checkpoint_lock(url=page.url, reason=cp_reason)
+            alert_checkpoint_detected(url=page.url, reason=cp_reason)
+            console.print(Panel(
+                f"[bold red]EMERGENCY: Security Checkpoint / CAPTCHA Detected on Portal Load![/bold red]\n\n"
+                f"[yellow]Reason:[/yellow] {cp_reason}\n"
+                f"[yellow]URL:[/yellow] {page.url}\n\n"
+                "[bold white]Engaged Circuit Breaker (data/.checkpoint_lock). All autonomous runs paused.[/bold white]",
+                title="🚨 CIRCUIT BREAKER TRIPPED",
+                border_style="red",
+                expand=False
+            ))
+            return
 
         # Login verification
         if any(k in page.url for k in ["login", "signup", "checkpoint", "authwall"]):
@@ -277,6 +343,22 @@ async def command_stream(headless: bool = False):
 
             await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
             await asyncio.sleep(2.0)
+
+            # Circuit Breaker: Check for security challenge after search navigation
+            is_cp, cp_reason = await discovery_agent.detect_security_checkpoint(page)
+            if is_cp:
+                create_checkpoint_lock(url=page.url, reason=cp_reason)
+                alert_checkpoint_detected(url=page.url, reason=cp_reason)
+                console.print(Panel(
+                    f"[bold red]EMERGENCY: Security Checkpoint / CAPTCHA Detected on Search Navigation![/bold red]\n\n"
+                    f"[yellow]Reason:[/yellow] {cp_reason}\n"
+                    f"[yellow]URL:[/yellow] {page.url}\n\n"
+                    "[bold white]Engaged Circuit Breaker (data/.checkpoint_lock). All autonomous runs paused.[/bold white]",
+                    title="🚨 CIRCUIT BREAKER TRIPPED",
+                    border_style="red",
+                    expand=False
+                ))
+                return
 
             # High-speed DOM evaluation: extract all cards metadata in ONE shot
             cards_meta = await page.evaluate("""() => {
@@ -386,6 +468,14 @@ async def command_stream(headless: bool = False):
                     await card.click()
                     await asyncio.sleep(0.4)  # Fast details pane update wait
 
+                    # Circuit Breaker: Check for challenge after clicking card
+                    is_cp, cp_reason = await discovery_agent.detect_security_checkpoint(page)
+                    if is_cp:
+                        create_checkpoint_lock(url=page.url, reason=cp_reason)
+                        alert_checkpoint_detected(url=page.url, reason=cp_reason)
+                        console.print(f"  [bold red]🚨 Security Checkpoint Detected on card click: {cp_reason}. Aborting stream.[/bold red]")
+                        return
+
                     job_posting = JobPosting(
                         job_id=job_id,
                         platform="linkedin",
@@ -475,6 +565,10 @@ def main():
     # Command: login
     subparsers.add_parser("login", help="Open browser to log in to LinkedIn and save session")
 
+    # Command: unlock / clear-lock
+    subparsers.add_parser("unlock", help="Clear the emergency security checkpoint lockfile once resolved")
+    subparsers.add_parser("clear-lock", help="Alias for unlock")
+
     args = parser.parse_args()
 
     if not args.command or args.command in ["stream", "run"]:
@@ -486,6 +580,8 @@ def main():
         asyncio.run(command_stats())
     elif args.command == "login":
         asyncio.run(command_login())
+    elif args.command in ["unlock", "clear-lock"]:
+        command_unlock()
 
 
 if __name__ == "__main__":

@@ -35,6 +35,77 @@ class DiscoveryAgent:
         await asyncio.sleep(delay)
         return delay
 
+    async def detect_security_checkpoint(self, page: Page) -> Tuple[bool, str]:
+        """
+        Emergency Circuit Breaker: Inspects the active page URL and DOM for LinkedIn
+        security checkpoints, challenges, Arkose Labs verification, or CAPTCHA prompts.
+        Returns (True, reason) if a checkpoint is detected, (False, "") otherwise.
+        """
+        current_url = (page.url or "").lower()
+
+        # 1. URL pattern check
+        checkpoint_url_patterns = [
+            "/checkpoint/",
+            "/challenge/",
+            "/uas/consumer-captcha",
+            "checkpoint/challenge",
+            "linkedin.com/checkpoint",
+        ]
+        for pattern in checkpoint_url_patterns:
+            if pattern in current_url:
+                return True, f"Security challenge URL detected ({pattern})"
+
+        # 2. DOM Selectors, Iframes, & Text
+        try:
+            dom_check = await page.evaluate("""() => {
+                // Check for Arkose Labs / CAPTCHA iframes
+                const iframes = Array.from(document.querySelectorAll('iframe'));
+                for (const frame of iframes) {
+                    const src = (frame.src || '').toLowerCase();
+                    const name = (frame.name || '').toLowerCase();
+                    const id = (frame.id || '').toLowerCase();
+                    if (src.includes('arkoselabs') || src.includes('funcaptcha') || 
+                        src.includes('checkpoint') || src.includes('challenge') ||
+                        name.includes('captcha') || id.includes('captcha')) {
+                        return { detected: true, reason: 'Arkose Labs / CAPTCHA iframe found in DOM' };
+                    }
+                }
+
+                // Check for specific CAPTCHA containers
+                const captchaContainers = document.querySelectorAll(
+                    '#captcha-internal, .captcha-container, input#captcha-user-answer, div[data-testid="captcha"], #security-challenge'
+                );
+                if (captchaContainers.length > 0) {
+                    return { detected: true, reason: 'CAPTCHA container element found in DOM' };
+                }
+
+                // Check page text for security verification keywords
+                const bodyText = (document.body ? document.body.innerText : '').toLowerCase();
+                const suspiciousPhrases = [
+                    'quick security check',
+                    "verify it's you",
+                    "verify it’s you",
+                    'security verification',
+                    'please solve this puzzle',
+                    "let's do a quick security check",
+                    "let’s do a quick security check"
+                ];
+                for (const phrase of suspiciousPhrases) {
+                    if (bodyText.includes(phrase)) {
+                        return { detected: true, reason: `Security challenge phrase detected: "${phrase}"` };
+                    }
+                }
+
+                return { detected: false, reason: '' };
+            }""")
+
+            if dom_check and dom_check.get("detected"):
+                return True, dom_check.get("reason", "Security verification detected in DOM")
+        except Exception:
+            pass
+
+        return False, ""
+
     def _generate_job_id(self, url: str) -> str:
         return hashlib.sha256(url.strip().lower().encode()).hexdigest()[:16]
 

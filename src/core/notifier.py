@@ -89,3 +89,76 @@ def notify_daily_cap_reached(
             pass
 
     return success
+
+
+DEFAULT_LOCKFILE_PATH = "data/.checkpoint_lock"
+
+
+def alert_checkpoint_detected(
+    url: str = "",
+    reason: str = "Security checkpoint or CAPTCHA challenge detected",
+    sound: str = "Sosumi"
+) -> bool:
+    """
+    Emergency Alert: Dispatches an urgent macOS desktop notification with sound 'Sosumi'
+    indicating that LinkedIn presented a security checkpoint or CAPTCHA challenge.
+    """
+    title = "AutoApply: Security Checkpoint Detected! 🚨"
+    subtitle = "Manual Verification Required"
+    message = (
+        "LinkedIn presented a security verification or CAPTCHA challenge. "
+        "All autonomous runs are locked to protect your account. "
+        "Resolve in browser and run: ./autoapply unlock"
+    )
+    return send_macos_notification(
+        title=title,
+        message=message,
+        subtitle=subtitle,
+        sound=sound
+    )
+
+
+def create_checkpoint_lock(
+    url: str = "",
+    reason: str = "Security checkpoint or CAPTCHA challenge detected",
+    lock_path: str = DEFAULT_LOCKFILE_PATH
+) -> str:
+    """
+    Creates an emergency lockfile indicating an active security checkpoint.
+    Stores timestamp, URL, and reason as JSON.
+    """
+    import json
+    os.makedirs(os.path.dirname(os.path.abspath(lock_path)), exist_ok=True)
+    payload = {
+        "timestamp": datetime.now().isoformat(),
+        "url": url,
+        "reason": reason
+    }
+    with open(lock_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    return lock_path
+
+
+def is_checkpoint_locked(lock_path: str = DEFAULT_LOCKFILE_PATH) -> tuple[bool, Optional[dict]]:
+    """Checks whether the emergency checkpoint lockfile is active."""
+    import json
+    if not os.path.exists(lock_path):
+        return False, None
+    try:
+        with open(lock_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return True, data
+    except Exception:
+        return True, {"timestamp": datetime.now().isoformat(), "reason": "Active lockfile present"}
+
+
+def clear_checkpoint_lock(lock_path: str = DEFAULT_LOCKFILE_PATH) -> bool:
+    """Removes the checkpoint lockfile to resume autonomous runs."""
+    if os.path.exists(lock_path):
+        try:
+            os.remove(lock_path)
+            return True
+        except Exception:
+            return False
+    return False
+
