@@ -189,3 +189,59 @@ def test_location_policy_all_ca():
         is_ok, reason = agent.evaluate_location_policy(loc, settings)
         assert is_ok is True, f"Expected '{loc}' to be accepted under all_ca: {reason}"
 
+
+def test_location_policy_default_no_filtering():
+    """When no location policy is specified, all locations across US are accepted without post-filtering."""
+    agent = DiscoveryAgent(None, None, None)
+    default_settings = {
+        "job_search": {
+            "target_location": "United States",
+            "target_titles": ["Staff Software Engineer"]
+        }
+    }
+
+    all_locations = [
+        "San Francisco, CA",
+        "Los Angeles, CA",
+        "San Diego, CA",
+        "Campbell, CA",
+        "Milpitas, CA",
+        "Seattle, WA",
+        "Austin, TX",
+        "New York, NY",
+        "Chicago, IL",
+        "Remote",
+    ]
+    for loc in all_locations:
+        is_ok, reason = agent.evaluate_location_policy(loc, default_settings)
+        assert is_ok is True, f"Expected '{loc}' to be accepted without filtering: {reason}"
+        assert "accepted" in reason.lower()
+
+    # Empty settings should also accept everything
+    for loc in all_locations:
+        is_ok, reason = agent.evaluate_location_policy(loc, {})
+        assert is_ok is True
+
+
+def test_build_search_url_location():
+    agent = DiscoveryAgent(None, None, None)
+
+    # 1. Default to United States
+    url_default = agent.build_search_url({
+        "job_search": {
+            "target_titles": ["Software Engineer"],
+            "target_location": "United States",
+        }
+    })
+    assert "location=United+States" in url_default
+
+    # 2. California Only scope
+    url_ca = agent.build_search_url({
+        "job_search": {
+            "target_titles": ["Software Engineer"],
+            "target_location": "California",
+        }
+    })
+    assert "location=California" in url_ca
+
+

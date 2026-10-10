@@ -16,33 +16,6 @@ matching_thresholds:
   min_fit_score: 80
 
 
-location:
-  # Options:
-  # - "exclude_ca": Exclude all California locations completely
-  # - "bay_area_only": If California, ONLY accept San Francisco Bay Area locations (reject LA, San Diego, Sacramento, etc.)
-  # - "all_ca": Accept all California locations
-  california_policy: "bay_area_only"  # Default to "bay_area_only" or "exclude_ca"
-
-  # Keywords/cities considered valid Bay Area:
-  bay_area_cities:
-    - "San Francisco"
-    - "Bay Area"
-    - "San Jose"
-    - "Sunnyvale"
-    - "Mountain View"
-    - "Palo Alto"
-    - "Santa Clara"
-    - "Redwood City"
-    - "Menlo Park"
-    - "Cupertino"
-    - "Foster City"
-    - "San Mateo"
-    - "Fremont"
-    - "Oakland"
-    - "Berkeley"
-    - "Pleasanton"
-    - "San Ramon"
-
 job_search:
   # Target Roles (searched simultaneously via Boolean query)
   target_titles:
@@ -52,6 +25,7 @@ job_search:
     - "AI Software Engineer"
     - "Machine Learning Software Engineer"
   
+  # Search Location on LinkedIn (e.g. "United States" for all states including CA, or "California")
   target_location: "United States"
   easy_apply_only: true
   

@@ -238,18 +238,15 @@ The architecture strictly decouples job stream discovery, form field introspecti
   2. **Graceful Disconnection Handling**: Catch `TargetClosedError` and `PlaywrightError` ("browser closed", "connection closed") mid-stream. If the laptop lid closes during an active application, the runner logs a warning, releases browser resources cleanly, and halts without leaving zombie processes.
   3. **30-Minute Re-engagement Frequency**: The macOS `launchd` daemon executes on an 1800-second (30 minute) recurring interval, allowing the application engine to automatically resume whenever the laptop wakes within active operating hours.
 
-### ADR-012: Regional Granularity & Bay Area California Policy
+### ADR-012: Simplified Native Search Scope & Zero-Filter Policy (United States vs. California)
 * **Status**: Accepted & Enforced
-* **Decision**: Replace binary California exclusion with a granular multi-tier regional policy (`california_policy: "exclude_ca" | "bay_area_only" | "all_ca"`).
+* **Decision**: Eliminate complex, fragile city-by-city post-filtering in favor of simplified, native LinkedIn location search targeting (`target_location: "United States"` covering all US states including California, or `"California"`). By default, zero post-filtering is applied (`all_ca` pass-through), ensuring every discovered job matching role and enterprise criteria is eligible for application.
 * **Engineering Rationale**:
-  1. The candidate targets tier-1 engineering positions within the San Francisco Bay Area tech corridor while strictly filtering out non-commutable Southern/Central California locations (Los Angeles, San Diego, Irvine, Sacramento, Anaheim, Santa Barbara).
-  2. **`exclude_ca`**: Complete exclusion of California (all CA postings skipped immediately).
-  3. **`bay_area_only`**:
-     - Non-California roles (e.g., Seattle, WA, New York, NY, Austin, TX, Remote US) remain accepted normally.
-     - California roles are validated against `bay_area_cities` (`San Francisco`, `Bay Area`, `San Jose`, `Sunnyvale`, `Mountain View`, `Palo Alto`, `Santa Clara`, `Redwood City`, `Menlo Park`, `Cupertino`, `Foster City`, `San Mateo`, `Fremont`, `Oakland`, `Berkeley`, `Pleasanton`, `San Ramon`).
-     - Postings located in non-Bay Area California are rejected with skip reason: `"Non-Bay Area California location"`.
-  4. **`all_ca`**: Accepts all California positions across all regions.
-  5. **Backward Compatibility**: If legacy `exclude_california: true` is configured, it automatically maps to `exclude_ca`.
+  1. Manual city lists fail to capture the breadth of metropolitan areas and create fragile maintenance bottlenecks.
+  2. LinkedIn's native search engine handles geographic clustering natively when passed `"United States"` (all 50 states including California) or `"California"`.
+  3. All locations within the search scope are accepted directly without post-filtering.
+  4. **Backward Compatibility**: If an explicit `california_policy` (`exclude_ca`, `bay_area_only`, or `all_ca`) is provided, `DiscoveryAgent.evaluate_location_policy` continues to honor it without breaking existing configurations.
+
 
 ---
 
@@ -319,10 +316,10 @@ The architecture strictly decouples job stream discovery, form field introspecti
    - Creates `data/.checkpoint_lock` and sounds an urgent `"Sosumi"` macOS audio chime.
    - All subsequent autonomous runs remain strictly paused until manually cleared with `./autoapply unlock`.
 
-10. **California Regional Filter Invariant**:
-    - `california_policy: "bay_area_only"`: Strictly filters out non-Bay Area California locations (`Los Angeles, CA`, `San Diego, CA`, `Irvine, CA`, `Sacramento, CA`, etc.) while accepting San Francisco Bay Area tech corridor locations and Non-California US roles (`Seattle, WA`, `New York, NY`, `Remote`).
-    - `california_policy: "exclude_ca"`: Completely filters out all California locations.
-    - `california_policy: "all_ca"`: Accepts all California locations across all subregions.
+10. **Simplified Native Search Scope & Zero Post-Filtering Invariant**:
+    - By default, searches target `target_location: "United States"` (covering all 50 states including California) or `"California"` natively on LinkedIn.
+    - Post-filtering is disabled (`all_ca` pass-through), so all qualified enterprise jobs within the search scope are accepted directly.
+    - If explicit legacy policy is supplied (`exclude_ca` or `bay_area_only`), `evaluate_location_policy` continues to honor it backward-compatibly.
 
 ---
 

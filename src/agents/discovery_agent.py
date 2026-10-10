@@ -13,28 +13,132 @@ from src.mcp.tools.browser import StealthBrowserTool
 
 
 DEFAULT_BAY_AREA_CITIES: List[str] = [
-    "San Francisco",
+    # Regional & Metros
+    "San Francisco Bay Area",
+    "SF Bay Area",
     "Bay Area",
+    "Silicon Valley",
+    # San Francisco County
+    "San Francisco",
+    # Santa Clara County (Silicon Valley Core)
     "San Jose",
     "Sunnyvale",
     "Mountain View",
     "Palo Alto",
     "Santa Clara",
-    "Redwood City",
-    "Menlo Park",
     "Cupertino",
-    "Foster City",
+    "Campbell",
+    "Milpitas",
+    "Los Gatos",
+    "Los Altos",
+    "Los Altos Hills",
+    "Morgan Hill",
+    "Gilroy",
+    "Saratoga",
+    "Stanford",
+    "Monte Sereno",
+    "Alviso",
+    # San Mateo County (Peninsula)
     "San Mateo",
-    "Fremont",
+    "Redwood City",
+    "Foster City",
+    "Menlo Park",
+    "South San Francisco",
+    "San Bruno",
+    "Burlingame",
+    "San Carlos",
+    "Belmont",
+    "Millbrae",
+    "Daly City",
+    "Pacifica",
+    "Half Moon Bay",
+    "Brisbane",
+    "Colma",
+    "Portola Valley",
+    "Woodside",
+    "Atherton",
+    "Hillsborough",
+    # Alameda County (East Bay)
     "Oakland",
     "Berkeley",
+    "Fremont",
     "Pleasanton",
+    "Dublin",
+    "Livermore",
+    "Alameda",
+    "Emeryville",
+    "Hayward",
+    "San Leandro",
+    "Union City",
+    "Newark",
+    "Albany",
+    "Piedmont",
+    "Castro Valley",
+    "San Lorenzo",
+    "Sunol",
+    # Contra Costa County (East Bay / North)
     "San Ramon",
+    "Walnut Creek",
+    "Concord",
+    "Richmond",
+    "Danville",
+    "Pleasant Hill",
+    "Martinez",
+    "Lafayette",
+    "Moraga",
+    "Orinda",
+    "Pittsburg",
+    "Antioch",
+    "Brentwood",
+    "Oakley",
+    "El Cerrito",
+    "Hercules",
+    "Pinole",
+    "San Pablo",
+    "Clayton",
+    "Alamo",
+    # Marin County (North Bay)
+    "San Rafael",
+    "Novato",
+    "Mill Valley",
+    "Sausalito",
+    "San Anselmo",
+    "Corte Madera",
+    "Larkspur",
+    "Tiburon",
+    "Fairfax",
+    "Belvedere",
+    "Ross",
+    # Solano County (North Bay)
+    "Vallejo",
+    "Fairfield",
+    "Vacaville",
+    "Benicia",
+    "Suisun City",
+    "Dixon",
+    # Sonoma County (North Bay / Wine Country)
+    "Santa Rosa",
+    "Petaluma",
+    "Rohnert Park",
+    "Sonoma",
+    "Windsor",
+    "Healdsburg",
+    "Sebastopol",
+    "Cotati",
+    # Napa County (North Bay / Wine Country)
+    "Napa",
+    "American Canyon",
+    "St. Helena",
+    "Calistoga",
+    "Yountville",
 ]
 
 KNOWN_CA_INDICATORS: List[str] = [
     "california",
     "bay area",
+    "san francisco bay area",
+    "sf bay area",
+    "silicon valley",
     "san francisco",
     "san jose",
     "sunnyvale",
@@ -51,6 +155,14 @@ KNOWN_CA_INDICATORS: List[str] = [
     "berkeley",
     "pleasanton",
     "san ramon",
+    "south san francisco",
+    "milpitas",
+    "campbell",
+    "burlingame",
+    "san carlos",
+    "walnut creek",
+    "san rafael",
+    "santa rosa",
     "los angeles",
     "san diego",
     "irvine",
@@ -99,18 +211,21 @@ class DiscoveryAgent:
     def get_location_policy(settings: Optional[dict] = None) -> Tuple[str, List[str]]:
         """
         Extracts the California location policy and bay area cities list from settings.
-        Supports new structured `location` section as well as legacy `exclude_california`.
+        Supports structured `location` section as well as legacy `exclude_california`.
+        Defaults to 'all_ca' (no location restrictions) when no policy is specified.
 
         Returns:
             Tuple[str, List[str]]: (california_policy, bay_area_cities)
         """
         if not settings:
-            return "bay_area_only", list(DEFAULT_BAY_AREA_CITIES)
+            return "all_ca", list(DEFAULT_BAY_AREA_CITIES)
 
         loc_cfg = settings.get("location") or settings.get("job_search", {}).get("location") or {}
 
         policy = loc_cfg.get("california_policy")
-        cities = loc_cfg.get("bay_area_cities") or DEFAULT_BAY_AREA_CITIES
+        cities = loc_cfg.get("bay_area_cities")
+        if not cities:
+            cities = DEFAULT_BAY_AREA_CITIES
 
         if not policy:
             legacy_exclude = None
@@ -124,11 +239,11 @@ class DiscoveryAgent:
             elif legacy_exclude is False:
                 policy = "all_ca"
             else:
-                policy = "bay_area_only"
+                policy = "all_ca"
 
         policy = str(policy).lower().strip()
         if policy not in ["exclude_ca", "bay_area_only", "all_ca"]:
-            policy = "bay_area_only"
+            policy = "all_ca"
 
         return policy, list(cities)
 
@@ -165,11 +280,13 @@ class DiscoveryAgent:
     ) -> Tuple[bool, str]:
         """
         Evaluates whether a location string is acceptable under the configured California policy.
+        When no location policy is specified, all locations within the search scope
+        (e.g., United States including California) are accepted without post-filtering.
 
         Policies:
         - "exclude_ca": Exclude all California locations completely
         - "bay_area_only": If California, ONLY accept San Francisco Bay Area locations
-        - "all_ca": Accept all California locations
+        - "all_ca" (default): Accept all locations (all US states including California)
 
         Returns:
             Tuple[bool, str]: (is_accepted, reason)
@@ -177,7 +294,20 @@ class DiscoveryAgent:
         if not location_str or not isinstance(location_str, str):
             return True, "No location text specified"
 
+        if not settings:
+            return True, "Location accepted"
+
+        loc_cfg = settings.get("location") or settings.get("job_search", {}).get("location") or {}
+        policy = loc_cfg.get("california_policy")
+
+        # If no explicit california_policy or legacy exclude_california is set, accept all
+        if not policy and "exclude_california" not in settings and "exclude_california" not in settings.get("job_search", {}):
+            return True, "Location accepted"
+
         policy, bay_area_cities = DiscoveryAgent.get_location_policy(settings)
+        if policy == "all_ca":
+            return True, "Accepted: Location accepted (all_ca policy)"
+
         is_ca = DiscoveryAgent.is_california_location(location_str)
 
         # Non-California roles (e.g., Seattle, WA, New York, NY, Remote) remain accepted under all modes
@@ -194,9 +324,6 @@ class DiscoveryAgent:
                 if city.lower() in loc_lower:
                     return True, f"Accepted: Bay Area location ({city})"
             return False, "Non-Bay Area California location"
-
-        if policy == "all_ca":
-            return True, "Accepted: California location"
 
         return True, "Location accepted"
 
