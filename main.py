@@ -287,14 +287,6 @@ async def command_stream(headless: bool = False):
         location = job_cfg.get("target_location", "United States")
         recent_first = job_cfg.get("sort_by_recent_first", True)
         time_range = job_cfg.get("time_posted_range", "r86400")
-        exclude_ca = job_cfg.get("exclude_california", True)
-
-        ca_indicators = [
-            "california", ", ca", "ca,", "ca ", "(ca)", "san francisco", "bay area", 
-            "los angeles", "san jose", "san diego", "sunnyvale", 
-            "mountain view", "palo alto", "menlo park", "cupertino", 
-            "fremont", "oakland", "santa clara", "irvine"
-        ]
         excluded_staffing_agencies = [
             "cybercoders", "insight global", "teksystems", "apex systems", "robert half",
             "kforce", "jobot", "motion recruitment", "beacon hill", "hays", "randstad",
@@ -447,12 +439,12 @@ async def command_stream(headless: bool = False):
                     store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": "No Easy Apply badge"})
                     continue
 
-                # 4. Instant California Region filter (0ms delay)
-                if exclude_ca:
-                    if any(ind in card_loc.lower() for ind in ca_indicators) or any(ind in card_text for ind in ca_indicators):
-                        store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": "Excluded Region: CA"})
-                        console.print(f"  [dim]• [{idx+1}/{total_cards}] Skipping '{card_title[:40]}': Excluded CA region[/dim]")
-                        continue
+                # 4. Instant Granular California Region filter (0ms delay)
+                loc_allowed, loc_reason = discovery_agent.evaluate_location_policy(card_loc or card_text, settings)
+                if not loc_allowed:
+                    store.update_job_status(job_id, ApplicationStatus.SKIPPED, metadata={"reason": loc_reason})
+                    console.print(f"  [dim]• [{idx+1}/{total_cards}] Skipping '{card_title[:40]}': {loc_reason}[/dim]")
+                    continue
 
                 # 5. Instant Staffing Agency filter (0ms delay)
                 comp_lower = company_name.lower()

@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 import random
+import re
 import urllib.parse
 from typing import Any, List, Optional, Tuple
 from playwright.async_api import Page
@@ -11,18 +12,201 @@ from src.core.schemas import ApplicationStatus, JobPosting
 from src.mcp.tools.browser import StealthBrowserTool
 
 
+DEFAULT_BAY_AREA_CITIES: List[str] = [
+    "San Francisco",
+    "Bay Area",
+    "San Jose",
+    "Sunnyvale",
+    "Mountain View",
+    "Palo Alto",
+    "Santa Clara",
+    "Redwood City",
+    "Menlo Park",
+    "Cupertino",
+    "Foster City",
+    "San Mateo",
+    "Fremont",
+    "Oakland",
+    "Berkeley",
+    "Pleasanton",
+    "San Ramon",
+]
+
+KNOWN_CA_INDICATORS: List[str] = [
+    "california",
+    "bay area",
+    "san francisco",
+    "san jose",
+    "sunnyvale",
+    "mountain view",
+    "palo alto",
+    "santa clara",
+    "redwood city",
+    "menlo park",
+    "cupertino",
+    "foster city",
+    "san mateo",
+    "fremont",
+    "oakland",
+    "berkeley",
+    "pleasanton",
+    "san ramon",
+    "los angeles",
+    "san diego",
+    "irvine",
+    "sacramento",
+    "orange county",
+    "pasadena",
+    "burbank",
+    "santa monica",
+    "long beach",
+    "anaheim",
+    "santa barbara",
+    "fresno",
+    "bakersfield",
+    "riverside",
+    "stockton",
+    "chula vista",
+    "newport beach",
+    "carlsbad",
+    "torrance",
+    "el segundo",
+    "ontario",
+    "glendale",
+    "santa ana",
+]
+
+
 class DiscoveryAgent:
+    DEFAULT_BAY_AREA_CITIES = DEFAULT_BAY_AREA_CITIES
+    KNOWN_CA_INDICATORS = KNOWN_CA_INDICATORS
+
     def __init__(
         self,
-        state_store: ApplicationStateStore,
-        browser_tool: StealthBrowserTool,
-        llm_client: GeminiFlashClient,
+        state_store: Optional[ApplicationStateStore] = None,
+        browser_tool: Optional[StealthBrowserTool] = None,
+        llm_client: Optional[GeminiFlashClient] = None,
         pacing: Optional[Any] = None,
+        settings: Optional[dict] = None,
     ):
         self.db = state_store
         self.browser = browser_tool
         self.llm = llm_client
         self.pacing = pacing
+        self.settings = settings
+
+    @staticmethod
+    def get_location_policy(settings: Optional[dict] = None) -> Tuple[str, List[str]]:
+        """
+        Extracts the California location policy and bay area cities list from settings.
+        Supports new structured `location` section as well as legacy `exclude_california`.
+
+        Returns:
+            Tuple[str, List[str]]: (california_policy, bay_area_cities)
+        """
+        if not settings:
+            return "bay_area_only", list(DEFAULT_BAY_AREA_CITIES)
+
+        loc_cfg = settings.get("location") or settings.get("job_search", {}).get("location") or {}
+
+        policy = loc_cfg.get("california_policy")
+        cities = loc_cfg.get("bay_area_cities") or DEFAULT_BAY_AREA_CITIES
+
+        if not policy:
+            legacy_exclude = None
+            if "exclude_california" in settings:
+                legacy_exclude = settings["exclude_california"]
+            elif "exclude_california" in settings.get("job_search", {}):
+                legacy_exclude = settings["job_search"]["exclude_california"]
+
+            if legacy_exclude is True:
+                policy = "exclude_ca"
+            elif legacy_exclude is False:
+                policy = "all_ca"
+            else:
+                policy = "bay_area_only"
+
+        policy = str(policy).lower().strip()
+        if policy not in ["exclude_ca", "bay_area_only", "all_ca"]:
+            policy = "bay_area_only"
+
+        return policy, list(cities)
+
+    @staticmethod
+    def is_california_location(location_str: Optional[str]) -> bool:
+        """
+        Identifies whether a location string represents California
+        (mentions CA, California, Bay Area, or known CA cities/regions).
+        """
+        if not location_str or not isinstance(location_str, str):
+            return False
+
+        text = location_str.lower().strip()
+
+        # Direct mentions of California or Bay Area
+        if "california" in text or "bay area" in text:
+            return True
+
+        # State abbreviation with boundary check (avoids Cambridge, Canada, Chicago, etc.)
+        if re.search(r'(?:\bca\b)', text, re.IGNORECASE):
+            return True
+
+        # Known California cities and regions
+        for indicator in KNOWN_CA_INDICATORS:
+            if indicator in text:
+                return True
+
+        return False
+
+    @staticmethod
+    def evaluate_location_policy(
+        location_str: Optional[str],
+        settings: Optional[dict] = None,
+    ) -> Tuple[bool, str]:
+        """
+        Evaluates whether a location string is acceptable under the configured California policy.
+
+        Policies:
+        - "exclude_ca": Exclude all California locations completely
+        - "bay_area_only": If California, ONLY accept San Francisco Bay Area locations
+        - "all_ca": Accept all California locations
+
+        Returns:
+            Tuple[bool, str]: (is_accepted, reason)
+        """
+        if not location_str or not isinstance(location_str, str):
+            return True, "No location text specified"
+
+        policy, bay_area_cities = DiscoveryAgent.get_location_policy(settings)
+        is_ca = DiscoveryAgent.is_california_location(location_str)
+
+        # Non-California roles (e.g., Seattle, WA, New York, NY, Remote) remain accepted under all modes
+        if not is_ca:
+            return True, "Non-California location"
+
+        # California location evaluation
+        if policy == "exclude_ca":
+            return False, "Excluded Region: California location"
+
+        if policy == "bay_area_only":
+            loc_lower = location_str.lower()
+            for city in bay_area_cities:
+                if city.lower() in loc_lower:
+                    return True, f"Accepted: Bay Area location ({city})"
+            return False, "Non-Bay Area California location"
+
+        if policy == "all_ca":
+            return True, "Accepted: California location"
+
+        return True, "Location accepted"
+
+    @staticmethod
+    def is_location_allowed(
+        location_str: Optional[str],
+        settings: Optional[dict] = None,
+    ) -> Tuple[bool, str]:
+        """Alias for evaluate_location_policy."""
+        return DiscoveryAgent.evaluate_location_policy(location_str, settings)
 
     async def simulate_reading_delay(self, pacing: Optional[Any] = None) -> float:
         """Simulates human reading delay before opening Easy Apply modal (12 to 28 seconds)."""
@@ -208,16 +392,14 @@ class DiscoveryAgent:
             raw = job_meta.get("full_text", "")
             location_text = job_meta.get("location", "")
 
-            # 1. California Exclusion Filter
-            if search_cfg.get("exclude_california", False):
-                ca_indicators = [
-                    "california", ", ca", "ca,", "ca ", "(ca)", "san francisco", "bay area", 
-                    "los angeles", "san jose", "san diego", "sunnyvale", 
-                    "mountain view", "palo alto", "menlo park", "cupertino", 
-                    "fremont", "oakland", "santa clara", "irvine"
-                ]
-                if any(ind in location_text for ind in ca_indicators) or any(ind in raw[:400] for ind in ca_indicators):
-                    return False, "Excluded Region: California / Bay Area posting"
+            # 1. Granular California Location Policy Filter (exclude_ca vs bay_area_only vs all_ca)
+            loc_to_check = location_text
+            if not self.is_california_location(loc_to_check) and self.is_california_location(raw[:400]):
+                loc_to_check = raw[:400]
+
+            loc_allowed, loc_reason = self.evaluate_location_policy(loc_to_check or location_text or raw[:400], settings)
+            if not loc_allowed:
+                return False, loc_reason
 
             # 2. Excluded Industries / Staffing Agencies
             excluded_industries = filters.get("excluded_industries", [])

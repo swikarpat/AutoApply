@@ -238,6 +238,19 @@ The architecture strictly decouples job stream discovery, form field introspecti
   2. **Graceful Disconnection Handling**: Catch `TargetClosedError` and `PlaywrightError` ("browser closed", "connection closed") mid-stream. If the laptop lid closes during an active application, the runner logs a warning, releases browser resources cleanly, and halts without leaving zombie processes.
   3. **30-Minute Re-engagement Frequency**: The macOS `launchd` daemon executes on an 1800-second (30 minute) recurring interval, allowing the application engine to automatically resume whenever the laptop wakes within active operating hours.
 
+### ADR-012: Regional Granularity & Bay Area California Policy
+* **Status**: Accepted & Enforced
+* **Decision**: Replace binary California exclusion with a granular multi-tier regional policy (`california_policy: "exclude_ca" | "bay_area_only" | "all_ca"`).
+* **Engineering Rationale**:
+  1. The candidate targets tier-1 engineering positions within the San Francisco Bay Area tech corridor while strictly filtering out non-commutable Southern/Central California locations (Los Angeles, San Diego, Irvine, Sacramento, Anaheim, Santa Barbara).
+  2. **`exclude_ca`**: Complete exclusion of California (all CA postings skipped immediately).
+  3. **`bay_area_only`**:
+     - Non-California roles (e.g., Seattle, WA, New York, NY, Austin, TX, Remote US) remain accepted normally.
+     - California roles are validated against `bay_area_cities` (`San Francisco`, `Bay Area`, `San Jose`, `Sunnyvale`, `Mountain View`, `Palo Alto`, `Santa Clara`, `Redwood City`, `Menlo Park`, `Cupertino`, `Foster City`, `San Mateo`, `Fremont`, `Oakland`, `Berkeley`, `Pleasanton`, `San Ramon`).
+     - Postings located in non-Bay Area California are rejected with skip reason: `"Non-Bay Area California location"`.
+  4. **`all_ca`**: Accepts all California positions across all regions.
+  5. **Backward Compatibility**: If legacy `exclude_california: true` is configured, it automatically maps to `exclude_ca`.
+
 ---
 
 ## 5. Live Dynamic Memory & Active Operational Invariants
@@ -279,7 +292,7 @@ The architecture strictly decouples job stream discovery, form field introspecti
      - Typing simulation cadence: `60ms - 130ms` per keystroke (`25ms - 50ms` for long essays)
      - Inter-job delays: `45.0s - 110.0s` with 15% chance of 6-12 minute rest break (`360s - 720s`)
      - Operating window: `09:00 - 21:30` local time only
-     - Rolling 24h cap: Hard ceiling `45` applications (strictly below LinkedIn's 50 limit)
+     - Rolling 24h cap: Hard ceiling `48` applications (strictly below LinkedIn's 50 limit)
    - Always run with viewport `1280x800` or higher to prevent mobile responsive layouts from hiding desktop action buttons.
    - User agent string must match contemporary macOS Chrome desktop.
 
@@ -305,6 +318,11 @@ The architecture strictly decouples job stream discovery, form field introspecti
    - URL patterns (`/checkpoint/`, `/challenge/`, `/uas/consumer-captcha`) or DOM indicators (Arkose Labs iframes, `#captcha-internal`, `"quick security check"`, `"verify it's you"`) immediately trip the circuit breaker.
    - Creates `data/.checkpoint_lock` and sounds an urgent `"Sosumi"` macOS audio chime.
    - All subsequent autonomous runs remain strictly paused until manually cleared with `./autoapply unlock`.
+
+10. **California Regional Filter Invariant**:
+    - `california_policy: "bay_area_only"`: Strictly filters out non-Bay Area California locations (`Los Angeles, CA`, `San Diego, CA`, `Irvine, CA`, `Sacramento, CA`, etc.) while accepting San Francisco Bay Area tech corridor locations and Non-California US roles (`Seattle, WA`, `New York, NY`, `Remote`).
+    - `california_policy: "exclude_ca"`: Completely filters out all California locations.
+    - `california_policy: "all_ca"`: Accepts all California locations across all subregions.
 
 ---
 
