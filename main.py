@@ -207,7 +207,7 @@ def rotate_logs_if_exceeded(log_dir: str = "data", max_size_mb: int = 15):
                 pass
 
 
-async def command_stream(headless: bool = False):
+async def command_stream(headless: bool = False, location: Optional[str] = None):
     """Executes the high-speed autonomous stream applier queue matching search criteria in settings.yaml."""
     # 0. Circuit Breaker Check
     if check_circuit_breaker_lock():
@@ -284,7 +284,10 @@ async def command_stream(headless: bool = False):
         # Search query preparation
         job_cfg = settings.get("job_search", {})
         titles = job_cfg.get("target_titles", ["Staff Software Engineer"])
-        location = job_cfg.get("target_location", "United States")
+        target_location = location or job_cfg.get("target_location", "United States")
+        if "job_search" not in settings:
+            settings["job_search"] = {}
+        settings["job_search"]["target_location"] = target_location
         recent_first = job_cfg.get("sort_by_recent_first", True)
         time_range = job_cfg.get("time_posted_range", "r86400")
         excluded_staffing_agencies = [
@@ -297,7 +300,7 @@ async def command_stream(headless: bool = False):
         import urllib.parse
         base_params = {
             "keywords": boolean_query,
-            "location": location,
+            "location": target_location,
             "f_AL": "true",  # Easy Apply only
             "sortBy": "DD" if recent_first else "R"
         }
@@ -312,7 +315,7 @@ async def command_stream(headless: bool = False):
 
         console.print(Panel(
             f"[bold cyan]Target Roles:[/bold cyan] {', '.join(titles)}\n"
-            f"[bold cyan]Location:[/bold cyan] {location} | [bold cyan]Recency:[/bold cyan] Newest First ({time_range})\n"
+            f"[bold cyan]Location:[/bold cyan] {target_location} | [bold cyan]Recency:[/bold cyan] Newest First ({time_range})\n"
             f"[bold cyan]Company Filter:[/bold cyan] >= 5,000 Employees | [bold cyan]Headless Mode:[/bold cyan] {is_headless}\n"
             f"[bold cyan]Pacing Engine:[/bold cyan] Rolling 24h: {recent_24h}/{pacing.hard_24h_cap} | Today's Stochastic Quota: {todays_target}\n"
             f"[bold cyan]Auto-Submit:[/bold cyan] True (100% Autonomous, zero manual confirmation needed)",
@@ -552,19 +555,28 @@ async def command_stream(headless: bool = False):
         await browser.close()
 
 
-def main():
+def build_cli_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="AutoApply: Autonomous AI-Powered LinkedIn Job Application Engine ⚡",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
+    # Global / default stream options
+    parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
+    parser.add_argument("--location", "-l", type=str, default=None, help="Target search location (e.g. 'California', 'San Francisco Bay Area')")
+    parser.add_argument("--ca", "--california", action="store_true", help="Shortcut to search exclusively within California")
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Command: stream (or run)
     stream_parser = subparsers.add_parser("stream", help="Run continuous stream search and Easy Apply queue")
     stream_parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
+    stream_parser.add_argument("--location", "-l", type=str, default=None, help="Target search location (e.g. 'California', 'San Francisco Bay Area')")
+    stream_parser.add_argument("--ca", "--california", action="store_true", help="Shortcut to search exclusively within California")
 
     run_parser = subparsers.add_parser("run", help="Alias for stream")
     run_parser.add_argument("--headless", action="store_true", help="Run in headless browser mode")
+    run_parser.add_argument("--location", "-l", type=str, default=None, help="Target search location (e.g. 'California', 'San Francisco Bay Area')")
+    run_parser.add_argument("--ca", "--california", action="store_true", help="Shortcut to search exclusively within California")
 
     # Command: apply
     apply_parser = subparsers.add_parser("apply", help="Apply to a specific LinkedIn Easy Apply URL")
@@ -587,11 +599,19 @@ def main():
     telemetry_parser.add_argument("--interval", type=float, default=5.0, help="Sampling interval in seconds (default: 5.0)")
     telemetry_parser.add_argument("--samples", type=int, default=None, help="Optional max samples to record")
 
+    return parser
+
+
+def main():
+    parser = build_cli_parser()
     args = parser.parse_args()
 
     if not args.command or args.command in ["stream", "run"]:
         headless = getattr(args, "headless", False)
-        asyncio.run(command_stream(headless=headless))
+        loc = getattr(args, "location", None)
+        if getattr(args, "ca", False):
+            loc = "California"
+        asyncio.run(command_stream(headless=headless, location=loc))
     elif args.command == "apply":
         asyncio.run(command_apply_single(url=args.url, headless=args.headless))
     elif args.command == "stats":

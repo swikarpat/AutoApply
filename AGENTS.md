@@ -342,11 +342,14 @@ playwright install chromium
 # 1. Interactive LinkedIn Login (Run once to establish session)
 ./autoapply login
 
-# 2. Continuous Stream Auto-Apply
+# 2. Continuous Stream Auto-Apply (Default: United States across all states)
 ./autoapply stream
 
-# 3. Dry-Run Stream (Autofills everything, pauses on Review screen without submitting)
-./autoapply stream --dry-run
+# 3. Stream Exclusively in California (On-the-fly CLI override without modifying settings.yaml!)
+./autoapply stream --ca
+# Or specify any custom search location:
+./autoapply stream --location "California"
+./autoapply stream -l "San Francisco Bay Area"
 
 # 4. Apply to a Specific Job URL (Targeted execution)
 ./autoapply apply --url "https://www.linkedin.com/jobs/view/<JOB_ID>/"

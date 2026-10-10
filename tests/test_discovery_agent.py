@@ -245,3 +245,34 @@ def test_build_search_url_location():
     assert "location=California" in url_ca
 
 
+def test_cli_parser_location_options():
+    from main import build_cli_parser
+
+    parser = build_cli_parser()
+
+    # 1. Stream with --ca shortcut
+    args1 = parser.parse_args(["stream", "--ca"])
+    assert args1.ca is True
+
+    # 2. Stream with --california shortcut
+    args2 = parser.parse_args(["stream", "--california"])
+    assert args2.ca is True
+
+    # 3. Stream with --location
+    args3 = parser.parse_args(["stream", "--location", "California"])
+    assert args3.location == "California"
+
+    # 4. Stream with -l shorthand
+    args4 = parser.parse_args(["stream", "-l", "San Francisco Bay Area"])
+    assert args4.location == "San Francisco Bay Area"
+
+    # 5. Top-level --ca shortcut without subcommand
+    args5 = parser.parse_args(["--ca"])
+    assert args5.ca is True
+
+    # 6. Top-level -l shorthand without subcommand
+    args6 = parser.parse_args(["-l", "California"])
+    assert args6.location == "California"
+
+
+
