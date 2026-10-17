@@ -33,8 +33,9 @@ export async function runPhase3Wizard(
     const authEngine = new WorkdayAuth(page, context, profile, sessionPath);
     await authEngine.authenticateOrResume(targetUrl);
 
-    // 5. Execute 5-step application wizard engine
-    const wizardEngine = new WorkdayWizardEngine(page, profile);
+    // 5. Execute 5-step application wizard engine using the active page
+    const activePage = authEngine.getPage();
+    const wizardEngine = new WorkdayWizardEngine(activePage, profile);
     await wizardEngine.runFullWizard("./resume.pdf");
 
     logger.step("Phase 3 complete! Application reached final Review screen without submitting.");
@@ -81,12 +82,8 @@ if (process.argv[1] && process.argv[1].endsWith("test_wizard.ts")) {
       const role = jobs[0];
       logger.step(`Selected fresh requisition: "${role.title}" (${role.reqId}) -> ${role.url}`);
 
-      // If the URL is an Eightfold/landing link (jobs.nvidia.com), navigate via Workday direct requisition search query
-      if (role.url.includes("jobs.nvidia.com")) {
-        targetJobUrl = `https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite?q=${encodeURIComponent(role.reqId)}`;
-      } else {
-        targetJobUrl = role.url;
-      }
+      // Pass canonical URL directly (e.g. https://jobs.nvidia.com/careers/job/893397632807)
+      targetJobUrl = role.url;
 
       jobMetadata = {
         company: role.company,

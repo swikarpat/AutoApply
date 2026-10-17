@@ -38,8 +38,8 @@ export class WorkdayAuth {
     return fs.existsSync(this.sessionFilePath);
   }
 
-  getSessionFilePath(): string {
-    return this.sessionFilePath;
+  getPage(): Page {
+    return this.page;
   }
 
   async authenticateOrResume(targetJobUrl: string): Promise<void> {
@@ -49,14 +49,59 @@ export class WorkdayAuth {
       hasSession: hasExistingSession,
     });
 
-    // 1. Navigate to target URL
-    const currentUrl = this.page.url();
-    if (!currentUrl.includes("myworkdayjobs.com") && !currentUrl.includes("jobs.nvidia.com")) {
-      logger.info(`Navigating to target job URL: ${targetJobUrl}`);
+    // 1. Eightfold-to-Workday Transition or direct Workday navigation
+    if (targetJobUrl.includes("jobs.nvidia.com") || this.page.url().includes("jobs.nvidia.com")) {
+      logger.info(`Navigating to Eightfold landing URL: ${targetJobUrl}`);
       await this.page.goto(targetJobUrl, { waitUntil: "networkidle", timeout: 45000 });
-    } else if (currentUrl !== targetJobUrl && !currentUrl.includes("/apply/")) {
-      logger.info(`Navigating directly to target job URL: ${targetJobUrl}`);
-      await this.page.goto(targetJobUrl, { waitUntil: "networkidle", timeout: 45000 });
+      await this.page.waitForTimeout(2000);
+
+      // Dismiss any cookie banner if visible
+      const cookieBtn = this.page
+        .locator('#onetrust-accept-btn-handler, button:has-text("Accept All"), button:has-text("Accept")')
+        .first();
+      if (await cookieBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        logger.info("Dismissing cookie banner...");
+        await cookieBtn.click();
+        await this.page.waitForTimeout(500);
+      }
+
+      // Locate and click the primary "Apply" button on the page
+      const applyBtn = this.page
+        .locator('button:has-text("Apply"), a:has-text("Apply"), [data-test-id="apply-button"]')
+        .first();
+
+      if (await applyBtn.isVisible({ timeout: 10000 }).catch(() => false)) {
+        logger.info("Clicking Eightfold primary 'Apply' button...");
+        const popupPromise = this.context.waitForEvent("page", { timeout: 15000 }).catch(() => null);
+        await applyBtn.click();
+
+        const popup = await popupPromise;
+        if (popup) {
+          logger.info("Detected new browser tab for Workday application. Switching active page...");
+          this.page = popup;
+          this.resolver = new WorkdayResolver(this.page);
+          await this.page.waitForLoadState("domcontentloaded").catch(() => {});
+        } else {
+          logger.info("Awaiting in-page navigation to Workday portal...");
+          await this.page.waitForURL((url) => url.hostname.includes("myworkdayjobs.com"), { timeout: 15000 }).catch(() => {});
+        }
+      } else {
+        const debugDir = path.resolve(process.cwd(), "debug");
+        if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+        await this.page
+          .screenshot({ path: path.join(debugDir, "job_page_missing_apply.png"), fullPage: true })
+          .catch(() => {});
+        throw new Error(`Job page did not present an 'Apply' button. URL: ${this.page.url()}`);
+      }
+    } else {
+      const currentUrl = this.page.url();
+      if (!currentUrl.includes("myworkdayjobs.com")) {
+        logger.info(`Navigating to target job URL: ${targetJobUrl}`);
+        await this.page.goto(targetJobUrl, { waitUntil: "networkidle", timeout: 45000 });
+      } else if (currentUrl !== targetJobUrl && !currentUrl.includes("/apply/")) {
+        logger.info(`Navigating directly to target job URL: ${targetJobUrl}`);
+        await this.page.goto(targetJobUrl, { waitUntil: "networkidle", timeout: 45000 });
+      }
     }
 
     await this.page.waitForTimeout(2000);
@@ -77,33 +122,26 @@ export class WorkdayAuth {
       }
     }
 
-    // 2. Click Primary "Apply" button
+    // Check if Workday redirected to maintenance outage page
+    const postNavUrl = this.page.url();
+    if (postNavUrl.includes("/outage") || postNavUrl.includes("careers.nvidia.com") || postNavUrl.includes("about-nvidia/careers")) {
+      const debugDir = path.resolve(process.cwd(), "debug");
+      if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+      await this.page.screenshot({ path: path.join(debugDir, "workday_maintenance_outage.png"), fullPage: true }).catch(() => {});
+      throw new Error(`Workday application portal redirected to maintenance outage page: ${this.page.url()}`);
+    }
+
+    // 2. Click Primary "Apply" button on Workday if present
     const applyButton = this.page
       .getByRole("button", { name: /^apply$/i })
       .or(this.page.getByRole("link", { name: /^apply$/i }))
       .or(this.page.locator("[data-automation-id*='apply' i]"))
       .first();
 
-    const applyFound = await applyButton.isVisible({ timeout: 8000 }).catch(() => false);
-    if (applyFound) {
-      logger.info("Clicking primary 'Apply' entry point...");
+    if (await applyButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      logger.info("Clicking primary Workday 'Apply' entry point...");
       await applyButton.click();
       await this.page.waitForTimeout(2000);
-    } else {
-      // If Apply button is not found and we are not already on an auth view:
-      const isAuthOrWizard = await this.page
-        .locator('input[type="password"], [data-automation-id="progressBar"]')
-        .first()
-        .isVisible()
-        .catch(() => false);
-      if (!isAuthOrWizard) {
-        const debugDir = path.resolve(process.cwd(), "debug");
-        if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-        await this.page
-          .screenshot({ path: path.join(debugDir, "job_page_missing_apply.png"), fullPage: true })
-          .catch(() => {});
-        throw new Error(`Job page did not present an 'Apply' button. URL: ${this.page.url()}`);
-      }
     }
 
     // 3. Click "Apply Manually" if prompted
