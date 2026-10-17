@@ -4,9 +4,14 @@ import { launchBrowserSession } from "./browser/launcher.js";
 import { loadProfile } from "./config.js";
 import { WorkdayAuth, AlreadyAppliedError } from "./auth/workday_auth.js";
 import { WorkdayWizardEngine } from "./engine/wizard_engine.js";
+import { JobDiscoveryEngine } from "./discovery/job_discovery.js";
+import { AppliedJobsTracker } from "./discovery/tracker.js";
 import { logger } from "./logger.js";
 
-export async function runPhase3Wizard(targetUrl: string): Promise<void> {
+export async function runPhase3Wizard(
+  targetUrl: string,
+  jobMetadata?: { company: string; reqId: string; title: string; url: string }
+): Promise<void> {
   logger.step("=== COMMENCING PHASE 3: CANDIDATE AUTH & 5-STEP WIZARD ENGINE ===", { targetUrl });
 
   // 1. Load validated candidate profile
@@ -33,6 +38,12 @@ export async function runPhase3Wizard(targetUrl: string): Promise<void> {
     await wizardEngine.runFullWizard("./resume.pdf");
 
     logger.step("Phase 3 complete! Application reached final Review screen without submitting.");
+
+    // 6. Record application in tracker upon reaching Review screen successfully
+    if (jobMetadata) {
+      const tracker = new AppliedJobsTracker();
+      tracker.recordApplication(jobMetadata.company, jobMetadata.reqId, jobMetadata.title, jobMetadata.url);
+    }
   } catch (err) {
     if (err instanceof AlreadyAppliedError || (err as Error).name === "AlreadyAppliedError") {
       throw err;
@@ -49,12 +60,45 @@ export async function runPhase3Wizard(targetUrl: string): Promise<void> {
 
 // CLI entry point
 if (process.argv[1] && process.argv[1].endsWith("test_wizard.ts")) {
-  const args = process.argv.slice(2);
-  const targetUrl =
-    args[0] ||
-    "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Systems-Software-Engineer---GPU-Software_JR2020271";
+  const target = process.argv[2] || "nvidia";
 
-  runPhase3Wizard(targetUrl)
+  (async () => {
+    let targetJobUrl = target;
+    let jobMetadata: { company: string; reqId: string; title: string; url: string } | undefined;
+
+    const isHttpUrl = target.startsWith("http://") || target.startsWith("https://");
+
+    if (!isHttpUrl) {
+      const tracker = new AppliedJobsTracker();
+      const discovery = new JobDiscoveryEngine(undefined, tracker);
+      const jobs = await discovery.discoverRoles(target);
+
+      if (jobs.length === 0) {
+        logger.warn(`No unapplied, eligible requisitions found for: "${target}".`);
+        process.exit(1);
+      }
+
+      const role = jobs[0];
+      logger.step(`Selected fresh requisition: "${role.title}" (${role.reqId}) -> ${role.url}`);
+
+      // If the URL is an Eightfold/landing link (jobs.nvidia.com), construct direct Workday requisition URL
+      if (role.url.includes("jobs.nvidia.com")) {
+        const slug = role.title.replace(/[^a-zA-Z0-9]+/g, "-");
+        targetJobUrl = `https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/${slug}_${role.reqId}`;
+      } else {
+        targetJobUrl = role.url;
+      }
+
+      jobMetadata = {
+        company: role.company,
+        reqId: role.reqId,
+        title: role.title,
+        url: targetJobUrl,
+      };
+    }
+
+    await runPhase3Wizard(targetJobUrl, jobMetadata);
+  })()
     .then(() => {
       process.exit(0);
     })
@@ -67,3 +111,5 @@ if (process.argv[1] && process.argv[1].endsWith("test_wizard.ts")) {
       process.exit(1);
     });
 }
+
+

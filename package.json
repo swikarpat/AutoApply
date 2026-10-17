@@ -7,7 +7,9 @@
     "build": "tsc",
     "test:phase1": "tsx src/harness.ts \"https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Systems-Software-Engineer---GPU-Software_JR2020271\"",
     "test:phase2": "tsx src/test_resolvers.ts \"https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Systems-Software-Engineer---GPU-Software_JR2020271\"",
-    "test:phase3": "tsx src/test_wizard.ts \"https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Systems-Software-Engineer---GPU-Software_JR2020271\""
+    "test:phase3": "tsx src/test_wizard.ts \"https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Systems-Software-Engineer---GPU-Software_JR2020271\"",
+    "test:wizard": "tsx src/test_wizard.ts",
+    "test:discovery": "tsx src/discovery/job_discovery.ts"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
