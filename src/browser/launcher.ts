@@ -7,7 +7,10 @@ export interface BrowserSession {
   page: Page;
 }
 
-export async function launchBrowserSession(headless: boolean = false): Promise<BrowserSession> {
+export async function launchBrowserSession(
+  headless: boolean = false,
+  storageStatePath?: string
+): Promise<BrowserSession> {
   logger.step(`Launching Chromium browser (headless: ${headless})...`);
 
   const browser = await chromium.launch({
@@ -15,11 +18,22 @@ export async function launchBrowserSession(headless: boolean = false): Promise<B
     slowMo: 60,
   });
 
-  const context = await browser.newContext({
+  const contextOptions: {
+    viewport: { width: number; height: number };
+    userAgent: string;
+    storageState?: string;
+  } = {
     viewport: { width: 1280, height: 900 },
     userAgent:
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-  });
+  };
+
+  if (storageStatePath) {
+    contextOptions.storageState = storageStatePath;
+    logger.debug(`Applying stored browser session state from: ${storageStatePath}`);
+  }
+
+  const context = await browser.newContext(contextOptions);
 
   const page = await context.newPage();
 

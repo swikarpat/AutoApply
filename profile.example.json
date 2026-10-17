@@ -1,4 +1,8 @@
 {
+  "workday_account": {
+    "email": "jane.doe@example.com",
+    "password": "ExamplePassword123!"
+  },
   "personal_info": {
     "first_name": "Jane",
     "last_name": "Doe",
@@ -6,10 +10,13 @@
     "headline": "Software Engineer",
     "email": "jane.doe@example.com",
     "phone": "+1-555-0100",
+    "phone_device_type": "Mobile",
     "location": {
+      "street_address": "100 Market St",
       "city": "San Francisco",
-      "state": "CA",
-      "country": "United States",
+      "state": "California",
+      "state_code": "CA",
+      "country": "United States of America",
       "postal_code": "94105"
     },
     "urls": {
@@ -22,6 +29,12 @@
     "authorized_us": true,
     "sponsorship_required": false,
     "clearance": "None"
+  },
+  "demographics_eeoc": {
+    "gender": "Decline to self-identify",
+    "race_ethnicity": "Decline to self-identify",
+    "veteran_status": "I am not a protected veteran",
+    "disability_status": "I do not have a disability"
   },
   "job_preferences": {
     "roles": [
@@ -38,7 +51,9 @@
     "preferred_locations": [
       "San Francisco, CA",
       "Remote"
-    ]
+    ],
+    "willing_to_relocate": true,
+    "notice_period_weeks": 2
   },
   "summary": "Experienced software engineer specializing in scalable systems and backend architectures.",
   "skills": {
