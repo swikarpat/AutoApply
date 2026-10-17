@@ -81,4 +81,31 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-debug/phase2_resolver_test.png
+
+# ==========================================
+# Images, Screenshots & Media Assets
+# ==========================================
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.tiff
+*.ico
+*.svgz
+
+# ==========================================
+# Video & Audio Recordings
+# ==========================================
+*.mp4
+*.webm
+*.mov
+*.avi
+*.mkv
+*.wmv
+*.flv
+*.mp3
+*.wav
+*.m4a
+*.ogg
