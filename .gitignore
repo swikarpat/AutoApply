@@ -81,3 +81,4 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+debug/phase2_resolver_test.png
