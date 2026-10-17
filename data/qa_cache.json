@@ -1,0 +1,60 @@
+{
+  "entries": [
+    {
+      "questionPattern": "Are you legally authorized to work in the United States?",
+      "normalizedQuestion": "are you legally authorized to work in the united states",
+      "answer": "Yes",
+      "category": "work_auth",
+      "source": "profile",
+      "updatedAt": "2026-10-17T03:54:04.249Z"
+    },
+    {
+      "questionPattern": "authorized to work in the US",
+      "normalizedQuestion": "authorized to work in the us",
+      "answer": "Yes",
+      "category": "work_auth",
+      "source": "profile",
+      "updatedAt": "2026-10-17T03:54:04.249Z"
+    },
+    {
+      "questionPattern": "Will you now or in the future require sponsorship for employment visa status?",
+      "normalizedQuestion": "will you now or in the future require sponsorship for employment visa status",
+      "answer": "No",
+      "category": "sponsorship",
+      "source": "profile",
+      "updatedAt": "2026-10-17T03:54:04.249Z"
+    },
+    {
+      "questionPattern": "require immigration sponsorship or visa transfer",
+      "normalizedQuestion": "require immigration sponsorship or visa transfer",
+      "answer": "No",
+      "category": "sponsorship",
+      "source": "profile",
+      "updatedAt": "2026-10-17T03:54:04.249Z"
+    },
+    {
+      "questionPattern": "Do you possess an active security clearance?",
+      "normalizedQuestion": "do you possess an active security clearance",
+      "answer": "No",
+      "category": "clearance",
+      "source": "profile",
+      "updatedAt": "2026-10-17T03:54:04.249Z"
+    },
+    {
+      "questionPattern": "Are you willing to relocate for this position?",
+      "normalizedQuestion": "are you willing to relocate for this position",
+      "answer": "Yes",
+      "category": "relocation",
+      "source": "profile",
+      "updatedAt": "2026-10-17T03:54:04.249Z"
+    },
+    {
+      "questionPattern": "What is your current notice period?",
+      "normalizedQuestion": "what is your current notice period",
+      "answer": "2 weeks",
+      "category": "notice_period",
+      "source": "profile",
+      "updatedAt": "2026-10-17T03:54:04.249Z"
+    }
+  ]
+}

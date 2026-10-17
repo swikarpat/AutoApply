@@ -1,0 +1,15 @@
+{"timestamp":"2026-10-17T03:54:40.108Z","level":"STEP","message":"=== STARTING PHASE 2: WORKDAY RESOLVERS & QA CACHE TEST ==="}
+{"timestamp":"2026-10-17T03:54:40.108Z","level":"INFO","message":"Checking profile configuration at: /Users/swikar/TechProject/AutoApply/profile.json"}
+{"timestamp":"2026-10-17T03:54:40.108Z","level":"DEBUG","message":"Read profile configuration file (9035 bytes)"}
+{"timestamp":"2026-10-17T03:54:40.108Z","level":"DEBUG","message":"Successfully parsed JSON syntax"}
+{"timestamp":"2026-10-17T03:54:40.108Z","level":"INFO","message":"Validating profile data against Zod schema..."}
+{"timestamp":"2026-10-17T03:54:40.109Z","level":"INFO","message":"Profile schema validation passed for candidate: Swikar Patel","meta":{"email":"swikar.aus@gmail.com","roles":["Staff Software Engineer","AI Architect","Staff AI Engineer","Senior Machine Learning Engineer","Distributed Systems Architect"],"experienceCount":5,"educationCount":1}}
+{"timestamp":"2026-10-17T03:54:40.109Z","level":"INFO","message":"Loaded candidate profile for: Swikar Patel"}
+{"timestamp":"2026-10-17T03:54:40.109Z","level":"STEP","message":"Testing Semantic Question Cache Engine resolution..."}
+{"timestamp":"2026-10-17T03:54:40.109Z","level":"DEBUG","message":"Loaded 7 QA cache entries from /Users/swikar/TechProject/AutoApply/data/qa_cache.json"}
+{"timestamp":"2026-10-17T03:54:40.110Z","level":"DEBUG","message":"Exact QA match found: \"Are you legally authorized to work in the United States?\" -> \"Yes\""}
+{"timestamp":"2026-10-17T03:54:40.110Z","level":"INFO","message":"QA Resolution Test: \"Are you legally authorized to work in the United States?\" => Yes (source: profile)"}
+{"timestamp":"2026-10-17T03:54:40.110Z","level":"INFO","message":"QA Resolution Test: \"Will you require employment visa sponsorship now or in future?\" => No (source: profile)"}
+{"timestamp":"2026-10-17T03:54:40.110Z","level":"INFO","message":"QA Resolution Test: \"Do you currently hold an active security clearance?\" => No (source: profile)"}
+{"timestamp":"2026-10-17T03:54:40.110Z","level":"INFO","message":"QA Resolution Test: \"Are you open to relocation?\" => Yes (source: profile)"}
+{"timestamp":"2026-10-17T03:54:40.110Z","level":"STEP","message":"Launching Chromium browser (headless: false)..."}

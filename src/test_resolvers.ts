@@ -72,6 +72,31 @@ export async function runPhase2Test(targetUrl: string): Promise<void> {
       logger.info("No separate 'Apply Manually' prompt required; already on application route or sign-in.");
     }
 
+    // If on "Sign In" stage, click "Sign in with email" or "Create Account" to expose form fields
+    const signInWithEmailBtn = page
+      .getByRole("button", { name: /sign in with email/i })
+      .or(page.locator('button:has-text("Sign in with email")'))
+      .first();
+
+    if (await signInWithEmailBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+      logger.info("Encountered 'Sign in with email' button. Clicking to expose candidate input fields...");
+      await signInWithEmailBtn.click();
+      await page.waitForTimeout(1000);
+    }
+
+    // Check if there is a 'Create Account' link to test email/password and account inputs
+    const createAccountLink = page
+      .getByRole("button", { name: /create account/i })
+      .or(page.getByRole("link", { name: /create account/i }))
+      .or(page.locator("a:has-text('Create Account'), button:has-text('Create Account')"))
+      .first();
+
+    if (await createAccountLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+      logger.info("Found 'Create Account' option. Navigating to account creation fields to test resolvers...");
+      await createAccountLink.click();
+      await page.waitForTimeout(1000);
+    }
+
     // 6. Test Interactive Workday Resolvers on detected fields
     logger.step("Running isolated Workday resolver tests on active form elements...");
 
