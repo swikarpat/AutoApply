@@ -1,0 +1,1012 @@
+{
+  "url": "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Systems-Software-Engineer---GPU-Software_JR2020271",
+  "title": "Senior Systems Software Engineer – GPU Software",
+  "timestamp": "2026-10-17T03:49:59.817Z",
+  "entryPointFound": true,
+  "interactiveElementsCount": 56,
+  "interactiveElements": [
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": "accessibilitySkipToMainContent",
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Skip to main content",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-u3cuz8"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "CAREERS AT NVIDIA\nSign In\nHome\nSearch for Jobs",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1deijjp"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-9hiqpq"
+      ]
+    },
+    {
+      "tag": "img",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1t8sqvc"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "CAREERS AT NVIDIA",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-nhdrg1"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Sign In\nHome\nSearch for Jobs",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-l0fptr"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Sign In",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1m9m39s"
+      ]
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": "submit",
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Sign In",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-5sncoy"
+      ]
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": "submit",
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Home",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1hfkkxz"
+      ]
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": "submit",
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Search for Jobs",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1hfkkxz"
+      ]
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": null,
+      "id": "hammyMenuIcon",
+      "type": "submit",
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": "main menu",
+      "ariaRequired": null,
+      "ariaExpanded": "false",
+      "ariaHasPopup": "true",
+      "classes": [
+        "css-1exv47t"
+      ]
+    },
+    {
+      "tag": "img",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-ap2pah"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Senior Systems Software Engineer – GPU Software page is loaded\nSenior Systems Software Engineer – GPU Software\nApply\nlocations\nUS, CA, Santa Clara\ntim",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-141ntgo"
+      ]
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Senior Systems Software Engineer – GPU Software",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-7papts"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": "button",
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Apply",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-q06cc6"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "locations\nUS, CA, Santa Clara\ntime type\nFull time\nposted on\nPosted 30+ Days Ago\njob requisition id\nJR2020271\n\nNVIDIA is seeking an innovative and high",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-11p01j8"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "locations\nUS, CA, Santa Clara",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "time type\nFull time",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "posted on\nPosted 30+ Days Ago",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "job requisition id\nJR2020271",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "NVIDIA is seeking an innovative and highly motivated engineer with deep expertise in systems software to join our GPU Software team. In this role, you",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-q3c8ro"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "benefits",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": []
+    },
+    {
+      "tag": "h3",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Similar Jobs (5)",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1fd2xki"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Senior System Software Engineer, GPU Server\nlocations\n2 Locations\ntime type\nFull time\nposted on\nPosted 14 Days Ago",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-yvxwy3"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Senior System Software Engineer, GPU Server",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-rlzdgt"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "locations\n2 Locations",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "time type\nFull time",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "posted on\nPosted 14 Days Ago",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Senior System Software Engineer, Performance - CUDA Driver\nlocations\nUS, CA, Santa Clara\ntime type\nFull time\nposted on\nPosted 2 Days Ago",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-yvxwy3"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Senior System Software Engineer, Performance - CUDA Driver",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-rlzdgt"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "locations\nUS, CA, Santa Clara",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "time type\nFull time",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "posted on\nPosted 2 Days Ago",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Senior Systems Software Engineer, CUDA Driver\nlocations\n6 Locations\ntime type\nFull time\nposted on\nPosted 30+ Days Ago",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-yvxwy3"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Senior Systems Software Engineer, CUDA Driver",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-rlzdgt"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "locations\n6 Locations",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "time type\nFull time",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "posted on\nPosted 30+ Days Ago",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-k008qs"
+      ]
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": "button",
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "View All 5 Jobs",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-166178v"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": "expandable-sectionm9kw1",
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-uc15wv"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": []
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "NVIDIA pioneered accelerated computing. Today, our AI infrastructure powers global intelligence, transforming every industry.\n\n \n\nLearn more about NVI",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-9bbna8"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "NVIDIA pioneered accelerated computing. Today, our AI infrastructure powers global intelligence, transforming every industry.\n\n \n\nLearn more about NVI",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1gw0f0n"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "NVIDIA pioneered accelerated computing. Today, our AI infrastructure powers global intelligence, transforming every industry.\n\n \n\nLearn more about NVI",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-6qub7p"
+      ]
+    },
+    {
+      "tag": "img",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1mh151z"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "NVIDIA pioneered accelerated computing. Today, our AI infrastructure powers global intelligence, transforming every industry.\n\n \n\nLearn more about NVI",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-q3c8ro"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "NVIDIA",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": []
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Follow Us\nApplicant Privacy Policy\n© 2026 Workday, Inc. All rights reserved.",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-3zv1wr"
+      ]
+    },
+    {
+      "tag": "h4",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Follow Us",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1lgxki7"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": "X",
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-ec6ge"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": "Facebook",
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-122eah4"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": "Glassdoor",
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-vboirj"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": "LinkedIn",
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1snirz8"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": null,
+      "ariaLabel": "YouTube",
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-7yyhgm"
+      ]
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "Applicant Privacy Policy",
+      "ariaLabel": "Applicant Privacy Policy",
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-1dyy6ry"
+      ]
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "name": null,
+      "id": null,
+      "type": null,
+      "placeholder": null,
+      "required": false,
+      "disabled": false,
+      "text": "© 2026 Workday, Inc. All rights reserved.",
+      "ariaLabel": null,
+      "ariaRequired": null,
+      "ariaExpanded": null,
+      "ariaHasPopup": null,
+      "classes": [
+        "css-twynnl"
+      ]
+    }
+  ],
+  "rawA11ySnapshot": null
+}
