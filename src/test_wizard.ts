@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import { launchBrowserSession } from "./browser/launcher.js";
 import { loadProfile } from "./config.js";
-import { WorkdayAuth } from "./auth/workday_auth.js";
+import { WorkdayAuth, AlreadyAppliedError } from "./auth/workday_auth.js";
 import { WorkdayWizardEngine } from "./engine/wizard_engine.js";
 import { logger } from "./logger.js";
 
@@ -34,6 +34,9 @@ export async function runPhase3Wizard(targetUrl: string): Promise<void> {
 
     logger.step("Phase 3 complete! Application reached final Review screen without submitting.");
   } catch (err) {
+    if (err instanceof AlreadyAppliedError || (err as Error).name === "AlreadyAppliedError") {
+      throw err;
+    }
     logger.error(`Phase 3 wizard execution error: ${(err as Error).message}`, {
       stack: (err as Error).stack,
     });
@@ -51,8 +54,16 @@ if (process.argv[1] && process.argv[1].endsWith("test_wizard.ts")) {
     args[0] ||
     "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Systems-Software-Engineer---GPU-Software_JR2020271";
 
-  runPhase3Wizard(targetUrl).catch((err) => {
-    logger.error("FATAL: Phase 3 wizard test failed", { err: (err as Error).message });
-    process.exit(1);
-  });
+  runPhase3Wizard(targetUrl)
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((err) => {
+      if (err instanceof AlreadyAppliedError || (err as Error).name === "AlreadyAppliedError") {
+        logger.step("Status: SKIPPED (Job already applied). Test completed cleanly.");
+        process.exit(0);
+      }
+      logger.error("FATAL: Phase 3 wizard test failed", { err: (err as Error).message });
+      process.exit(1);
+    });
 }
