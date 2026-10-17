@@ -18,8 +18,9 @@ export async function runPhase3Wizard(
   const profile = loadProfile();
   logger.info(`Loaded candidate profile for: ${profile.personal_info.full_name}`);
 
-  // 2. Determine session state file path
-  const sessionPath = path.resolve(process.cwd(), "data", "sessions", "workday_nvidia.json");
+  // 2. Determine session state file path dynamically
+  const companySlug = (jobMetadata?.company || (targetUrl.includes("walmart") ? "walmart" : "nvidia")).toLowerCase();
+  const sessionPath = path.resolve(process.cwd(), "data", "sessions", `workday_${companySlug}.json`);
   const sessionExists = fs.existsSync(sessionPath);
 
   // 3. Launch browser session (restoring storageState if available)

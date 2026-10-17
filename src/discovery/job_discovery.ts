@@ -23,10 +23,13 @@ export class JobDiscoveryEngine {
   /**
    * Resolves company identifier and career site details from an identifier or URL.
    */
-  private parseCompanyTarget(target: string): { company: string; type: "nvidia" | "workday" | "unknown"; url?: string; tenant?: string; site?: string } {
+  private parseCompanyTarget(target: string): { company: string; type: "nvidia" | "walmart" | "workday" | "unknown"; url?: string; tenant?: string; site?: string } {
     const lower = target.toLowerCase();
     if (lower.includes("nvidia")) {
       return { company: "nvidia", type: "nvidia" };
+    }
+    if (lower.includes("walmart")) {
+      return { company: "walmart", type: "walmart" };
     }
 
     const workdayMatch = target.match(/https?:\/\/([^.]+)\.(?:wd\d+\.)?myworkdayjobs\.com\/(?:[a-zA-Z-]+)\/([^/?#]+)/i);
@@ -45,7 +48,7 @@ export class JobDiscoveryEngine {
 
   /**
    * Evaluates if a job location string meets candidate preferences:
-   * Keeps "Remote" and target states like "CA" / "California", or items in profile.preferred_locations.
+   * Keeps "Remote", target states like "CA" / "California", Walmart Bay Area hubs (Sunnyvale, San Bruno), or items in profile.preferred_locations.
    */
   private matchesLocation(locationStr: string): boolean {
     if (!locationStr) return false;
@@ -56,8 +59,15 @@ export class JobDiscoveryEngine {
       return true;
     }
 
-    // 2. Keep target state CA / California
-    if (/\bca\b/i.test(locationStr) || loc.includes("california") || loc.includes("santa clara") || loc.includes("san francisco")) {
+    // 2. Keep target state CA / California & Bay Area hubs (Sunnyvale, San Bruno, Santa Clara, San Francisco)
+    if (
+      /\bca\b/i.test(locationStr) ||
+      loc.includes("california") ||
+      loc.includes("sunnyvale") ||
+      loc.includes("san bruno") ||
+      loc.includes("santa clara") ||
+      loc.includes("san francisco")
+    ) {
       return true;
     }
 
@@ -97,6 +107,8 @@ export class JobDiscoveryEngine {
       try {
         if (target.type === "nvidia") {
           foundJobs = await this.searchNvidiaPcsx(role);
+        } else if (target.type === "walmart") {
+          foundJobs = await this.searchWalmartCareers(role);
         } else if (target.type === "workday" && target.tenant && target.site) {
           foundJobs = await this.searchWorkdayCxs(target.url!, target.tenant, target.site, role);
         } else {
@@ -239,6 +251,48 @@ export class JobDiscoveryEngine {
         url: jobUrl,
       };
     });
+  }
+
+  /**
+   * Discovers Walmart engineering roles matching candidate role query.
+   */
+  private async searchWalmartCareers(roleQuery: string): Promise<DiscoveredJob[]> {
+    const { chromium } = await import("playwright");
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      const searchUrl = `https://careers.walmart.com/content/careers/us/en/results?searchQuery=${encodeURIComponent(roleQuery)}&careerareas=Technology`;
+      logger.info(`Querying Walmart Careers tech portal: ${searchUrl}`);
+      await page.goto(searchUrl, { waitUntil: "networkidle", timeout: 45000 });
+      await page.waitForTimeout(3000);
+
+      const cards = await page.locator('div[data-id="job-card"]').all();
+      logger.info(`Found ${cards.length} raw job cards for Walmart query: "${roleQuery}"`);
+      const jobs: DiscoveredJob[] = [];
+
+      for (const card of cards) {
+        const reqId = (await card.getAttribute("data-job-id"))?.trim();
+        if (!reqId) continue;
+
+        const title = (await card.locator('[data-id="job-title"]').innerText().catch(() => "")).trim();
+        const text = (await card.innerText().catch(() => "")).trim();
+        const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+        const loc = lines.find((l) => /\b[A-Z]{2}\b/i.test(l) || /remote/i.test(l)) || lines[1] || "Sunnyvale, CA";
+        const jobUrl = `https://careers.walmart.com/us/en/jobs/${reqId}`;
+
+        jobs.push({
+          company: "walmart",
+          title: title || "Software Engineer",
+          reqId,
+          location: loc,
+          url: jobUrl,
+        });
+      }
+
+      return jobs;
+    } finally {
+      await browser.close();
+    }
   }
 }
 

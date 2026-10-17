@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { type BrowserContext, type Page } from "playwright";
 import { type Profile } from "../schema.js";
 import { WorkdayResolver } from "../resolvers/workday_resolvers.js";
+import { OtpListener } from "./otp_listener.js";
 import { logger } from "../logger.js";
 
 export class AlreadyAppliedError extends Error {
@@ -23,19 +24,27 @@ export class WorkdayAuth {
     page: Page,
     context: BrowserContext,
     profile: Profile,
-    sessionFilePath?: string
+    sessionFilePathOrCompany?: string
   ) {
     this.page = page;
     this.context = context;
     this.profile = profile;
     this.resolver = new WorkdayResolver(page);
-    this.sessionFilePath =
-      sessionFilePath ||
-      path.resolve(process.cwd(), "data", "sessions", "workday_nvidia.json");
+
+    if (sessionFilePathOrCompany && sessionFilePathOrCompany.endsWith(".json")) {
+      this.sessionFilePath = sessionFilePathOrCompany;
+    } else {
+      const company = (sessionFilePathOrCompany || "nvidia").toLowerCase();
+      this.sessionFilePath = path.resolve(process.cwd(), "data", "sessions", `workday_${company}.json`);
+    }
   }
 
   hasSessionFile(): boolean {
     return fs.existsSync(this.sessionFilePath);
+  }
+
+  getSessionFilePath(): string {
+    return this.sessionFilePath;
   }
 
   getPage(): Page {
@@ -49,8 +58,106 @@ export class WorkdayAuth {
       hasSession: hasExistingSession,
     });
 
-    // 1. Eightfold-to-Workday Transition or direct Workday navigation
-    if (targetJobUrl.includes("jobs.nvidia.com") || this.page.url().includes("jobs.nvidia.com")) {
+    // Credentials
+    const credentials = this.profile.workday_account || {
+      email: this.profile.personal_info.email,
+      password: "ChangeMe2026!#",
+    };
+
+    // 1. Walmart Careers navigation & OTP Challenge Resolution
+    if (targetJobUrl.includes("careers.walmart.com") || this.page.url().includes("careers.walmart.com")) {
+      logger.info(`Navigating to Walmart landing URL: ${targetJobUrl}`);
+      await this.page.goto(targetJobUrl, { waitUntil: "networkidle", timeout: 45000 });
+      await this.page.waitForTimeout(2000);
+
+      // Dismiss cookie banner if visible
+      const cookieBtn = this.page
+        .locator('#onetrust-accept-btn-handler, button:has-text("Accept All"), button:has-text("Accept")')
+        .first();
+      if (await cookieBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        logger.info("Dismissing cookie banner...");
+        await cookieBtn.click();
+        await this.page.waitForTimeout(500);
+      }
+
+      // Locate visible Apply now button
+      const applyBtn = this.page
+        .locator('button[data-id="job-apply-button"]:visible, button:has-text("Apply now"):visible, a:has-text("Apply now"):visible')
+        .first();
+
+      if (await applyBtn.isVisible({ timeout: 10000 }).catch(() => false)) {
+        logger.info("Clicking Walmart primary 'Apply now' button...");
+        await applyBtn.click();
+        await this.page.waitForLoadState("networkidle").catch(() => {});
+        await this.page.waitForTimeout(2000);
+      }
+
+      // Handle contact-details / email entry
+      if (this.page.url().includes("contact-details")) {
+        logger.info("Walmart contact details page reached. Inspecting form state...");
+        const emailInput = this.page.locator('input[type="text"]:visible, input[type="email"]:visible').last();
+        const continueBtn = this.page.locator('button:has-text("Continue")').first();
+
+        if (await emailInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+          logger.info(`Submitting candidate email: ${this.profile.personal_info.email}`);
+          await emailInput.fill(this.profile.personal_info.email);
+
+          const termsCheckbox = this.page.locator('input[type="checkbox"]').first();
+          if (await termsCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await termsCheckbox.check();
+          }
+
+          if (await continueBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+            logger.info("Clicking 'Continue' on Walmart contact details...");
+            await continueBtn.click();
+            await this.page.waitForTimeout(3000);
+          }
+        }
+
+        // Check for verification code challenge
+        const otpListener = new OtpListener();
+        const otpInput = this.page
+          .locator('input[data-automation-id="verificationCode"], input[name="code"], input[autocomplete="one-time-code"], input[type="text"]')
+          .first();
+
+        const pageText = (await this.page.textContent("body").catch(() => "")) || "";
+        const isVerificationPage =
+          (await otpInput.isVisible({ timeout: 5000 }).catch(() => false)) ||
+          /verification code|sent a verification code|enter the code/i.test(pageText);
+
+        if (isVerificationPage) {
+          logger.step("Walmart email verification challenge detected. Resolving OTP...");
+          const otpCode = await otpListener.waitForOtp("walmart.com", 60000);
+
+          logger.info(`Filling verification code: ${otpCode}`);
+          await otpInput.fill(otpCode);
+
+          const verifyBtn = this.page
+            .getByRole("button", { name: /verify|submit|continue/i })
+            .first();
+
+          logger.info("Clicking Verify button...");
+          await verifyBtn.click();
+          await this.page.waitForLoadState("networkidle").catch(() => {});
+          await this.page.waitForTimeout(3000);
+
+          // Check if verification redirected to a new popup tab/page
+          const pages = this.context.pages();
+          if (pages.length > 1) {
+            const lastPage = pages[pages.length - 1];
+            if (lastPage !== this.page) {
+              logger.info("Detected new tab opened after verification. Switching context...");
+              this.page = lastPage;
+              this.resolver = new WorkdayResolver(this.page);
+              await this.page.waitForLoadState("domcontentloaded").catch(() => {});
+            }
+          }
+
+          // Await navigation into application wizard
+          await this.waitForWizardArrival(30000);
+        }
+      }
+    } else if (targetJobUrl.includes("jobs.nvidia.com") || this.page.url().includes("jobs.nvidia.com")) {
       logger.info(`Navigating to Eightfold landing URL: ${targetJobUrl}`);
       await this.page.goto(targetJobUrl, { waitUntil: "networkidle", timeout: 45000 });
       await this.page.waitForTimeout(2000);
@@ -165,11 +272,6 @@ export class WorkdayAuth {
       return;
     }
 
-    // Credentials
-    const credentials = this.profile.workday_account || {
-      email: this.profile.personal_info.email,
-      password: "ChangeMe2026!#",
-    };
 
     // 5. If "Sign in with email" button is visible, click it.
     const signInWithEmailBtn = this.page
@@ -484,7 +586,9 @@ export class WorkdayAuth {
 
     // Inside wizard strictly by presence of wizard Step 1 form fields:
     const hasLegalNameSection = await this.page
-      .locator('input[data-automation-id="legalNameSection_firstName"], [data-automation-id="addressSection_addressLine1"]')
+      .locator(
+        'input[data-automation-id="legalNameSection_firstName"], [data-automation-id="addressSection_addressLine1"], [data-automation-id="progressBar"], h2:has-text("My Information"), h1:has-text("My Information")'
+      )
       .first()
       .isVisible()
       .catch(() => false);
