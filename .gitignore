@@ -1,0 +1,83 @@
+# ==========================================
+# Dependencies & Package Managers
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# Build Artifacts & Compiled Code
+# ==========================================
+dist/
+build/
+*.tsbuildinfo
+
+# ==========================================
+# Private Candidate Data & Personal Identifiers (PII)
+# ==========================================
+profile.json
+profile.yml
+profile.yaml
+profile.local.json
+profile.local.yml
+data/
+*.pdf
+assets/*.pdf
+assets/Resume.pdf
+assets/resume.pdf
+
+# ==========================================
+# Secrets, Credentials & Environment
+# ==========================================
+.env
+.env.local
+.env.*.local
+*.env
+*.pem
+*.key
+*.cert
+*.pfx
+credentials.json
+secrets.json
+auth.json
+
+# ==========================================
+# Debug Output, Snapshots & Logs
+# ==========================================
+debug/
+*.log
+logs/
+*.jsonl
+
+# ==========================================
+# Browser Test Artifacts & Playwright
+# ==========================================
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# ==========================================
+# Operating System & IDE Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,74 @@
+{
+  "personal_info": {
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "full_name": "Jane Doe",
+    "headline": "Software Engineer",
+    "email": "jane.doe@example.com",
+    "phone": "+1-555-0100",
+    "location": {
+      "city": "San Francisco",
+      "state": "CA",
+      "country": "United States",
+      "postal_code": "94105"
+    },
+    "urls": {
+      "linkedin": "https://linkedin.com/in/janedoe",
+      "github": "https://github.com/janedoe",
+      "portfolio": "https://janedoe.dev"
+    }
+  },
+  "work_authorization": {
+    "authorized_us": true,
+    "sponsorship_required": false,
+    "clearance": "None"
+  },
+  "job_preferences": {
+    "roles": [
+      "Staff Software Engineer",
+      "Senior Software Engineer"
+    ],
+    "job_types": [
+      "Full-time"
+    ],
+    "workplace_types": [
+      "Remote",
+      "Hybrid"
+    ],
+    "preferred_locations": [
+      "San Francisco, CA",
+      "Remote"
+    ]
+  },
+  "summary": "Experienced software engineer specializing in scalable systems and backend architectures.",
+  "skills": {
+    "languages": ["Python", "TypeScript", "Java"],
+    "machine_learning_ai": ["PyTorch"],
+    "backend_distributed_systems": ["FastAPI", "Spring Boot"],
+    "data_infrastructure_mlops": ["Kafka", "PostgreSQL"],
+    "cloud_devops_security": ["AWS", "Docker", "Kubernetes"]
+  },
+  "experience": [
+    {
+      "company": "Example Corp",
+      "title": "Senior Software Engineer",
+      "location": "San Francisco, CA",
+      "start_date": "2021",
+      "end_date": "Present",
+      "current": true,
+      "highlights": [
+        "Architected distributed microservices."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "B.S. Computer Science",
+      "field_of_study": "Computer Science",
+      "institution": "University of Technology",
+      "location": "United States",
+      "start_date": "2015",
+      "end_date": "2019"
+    }
+  ]
+}
