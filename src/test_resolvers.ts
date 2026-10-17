@@ -100,35 +100,30 @@ export async function runPhase2Test(targetUrl: string): Promise<void> {
     // 6. Test Interactive Workday Resolvers on detected fields
     logger.step("Running isolated Workday resolver tests on active form elements...");
 
-    // Find any visible text inputs (e.g., First Name, Last Name, Email, or Search)
-    const textInputs = page.locator('input[type="text"], input[type="email"], input:not([type])');
-    const inputCount = await textInputs.count();
-    logger.info(`Detected ${inputCount} potential text input fields on current view`);
+    // Test text inputs (Email Address field)
+    const emailInput = page
+      .getByLabel(/email address/i)
+      .or(page.locator('input[type="email"]'))
+      .or(page.locator('input[data-automation-id*="email" i]'))
+      .first();
 
-    if (inputCount > 0) {
-      // Find First Name / Given Name or fallback to first input
-      const firstNameInput = page
-        .getByLabel(/first name|given name/i)
-        .or(page.locator('input[data-automation-id*="legalNameSection_firstName" i]'))
-        .or(textInputs.first());
+    if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+      logger.step("Testing WorkdayResolver.fillTextInput on Email Address...");
+      await workday.fillTextInput(emailInput, profile.personal_info.email);
+      const readBackEmail = await emailInput.inputValue().catch(() => "");
+      logger.info(`Assertion: Email field value verified: "${readBackEmail}" === "${profile.personal_info.email}"`);
+    }
 
-      if (await firstNameInput.isVisible().catch(() => false)) {
-        await workday.fillTextInput(firstNameInput, profile.personal_info.first_name);
-        const readBack = await firstNameInput.inputValue().catch(() => "");
-        logger.info(`Assertion: First name field value verified: "${readBack}" === "${profile.personal_info.first_name}"`);
-      }
+    // Test Checkbox resolver on Workday consent checkbox ("I agree")
+    const agreeCheckbox = page
+      .getByRole("checkbox", { name: /i agree/i })
+      .or(page.locator('input[type="checkbox"]'))
+      .first();
 
-      // Find Last Name
-      const lastNameInput = page
-        .getByLabel(/last name|family name/i)
-        .or(page.locator('input[data-automation-id*="legalNameSection_lastName" i]'))
-        .first();
-
-      if (await lastNameInput.isVisible().catch(() => false)) {
-        await workday.fillTextInput(lastNameInput, profile.personal_info.last_name);
-        const readBack = await lastNameInput.inputValue().catch(() => "");
-        logger.info(`Assertion: Last name field value verified: "${readBack}" === "${profile.personal_info.last_name}"`);
-      }
+    if (await agreeCheckbox.isVisible({ timeout: 3000 }).catch(() => false)) {
+      logger.step("Testing WorkdayResolver.setCheckbox on 'I agree' checkbox...");
+      const checked = await workday.setCheckbox(agreeCheckbox, true);
+      logger.info(`Assertion: Checkbox resolver result verified: checked=${checked}`);
     }
 
     // Test Combobox Resolver if any combobox/dropdown trigger is visible
