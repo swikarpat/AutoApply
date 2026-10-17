@@ -81,10 +81,9 @@ if (process.argv[1] && process.argv[1].endsWith("test_wizard.ts")) {
       const role = jobs[0];
       logger.step(`Selected fresh requisition: "${role.title}" (${role.reqId}) -> ${role.url}`);
 
-      // If the URL is an Eightfold/landing link (jobs.nvidia.com), construct direct Workday requisition URL
+      // If the URL is an Eightfold/landing link (jobs.nvidia.com), navigate via Workday direct requisition search query
       if (role.url.includes("jobs.nvidia.com")) {
-        const slug = role.title.replace(/[^a-zA-Z0-9]+/g, "-");
-        targetJobUrl = `https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/${slug}_${role.reqId}`;
+        targetJobUrl = `https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite?q=${encodeURIComponent(role.reqId)}`;
       } else {
         targetJobUrl = role.url;
       }

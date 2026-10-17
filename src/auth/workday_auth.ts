@@ -61,18 +61,49 @@ export class WorkdayAuth {
 
     await this.page.waitForTimeout(2000);
 
+    // If target URL is a Workday search query (e.g. ?q=JR...), click the matching job listing
+    if (this.page.url().includes("?q=") || targetJobUrl.includes("?q=")) {
+      logger.info("Direct requisition search page detected. Waiting for matching job posting...");
+      const jobLink = this.page
+        .locator('a[data-automation-id="jobTitle"], a[href*="/job/"]')
+        .first();
+
+      if (await jobLink.isVisible({ timeout: 15000 }).catch(() => false)) {
+        logger.info(`Clicking matching job listing: "${await jobLink.innerText().catch(() => "")}"...`);
+        await jobLink.click();
+        await this.page.waitForLoadState("networkidle").catch(() => {});
+        await this.page.waitForTimeout(2000);
+        logger.info(`Navigated to canonical job posting: ${this.page.url()}`);
+      }
+    }
+
     // 2. Click Primary "Apply" button
     const applyButton = this.page
       .getByRole("button", { name: /^apply$/i })
       .or(this.page.getByRole("link", { name: /^apply$/i }))
       .or(this.page.locator("[data-automation-id*='apply' i]"))
-      .or(this.page.locator("a:has-text('Apply'), button:has-text('Apply')"))
       .first();
 
-    if (await applyButton.isVisible({ timeout: 10000 }).catch(() => false)) {
+    const applyFound = await applyButton.isVisible({ timeout: 8000 }).catch(() => false);
+    if (applyFound) {
       logger.info("Clicking primary 'Apply' entry point...");
       await applyButton.click();
       await this.page.waitForTimeout(2000);
+    } else {
+      // If Apply button is not found and we are not already on an auth view:
+      const isAuthOrWizard = await this.page
+        .locator('input[type="password"], [data-automation-id="progressBar"]')
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (!isAuthOrWizard) {
+        const debugDir = path.resolve(process.cwd(), "debug");
+        if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+        await this.page
+          .screenshot({ path: path.join(debugDir, "job_page_missing_apply.png"), fullPage: true })
+          .catch(() => {});
+        throw new Error(`Job page did not present an 'Apply' button. URL: ${this.page.url()}`);
+      }
     }
 
     // 3. Click "Apply Manually" if prompted
@@ -141,8 +172,8 @@ export class WorkdayAuth {
       .or(this.page.locator("a:has-text('Create Account'), button:has-text('Create Account')"))
       .first();
 
-    if (isLoginView) {
-      logger.info("Active login view detected (URL contains /login or login form visible). Signing in directly...");
+    if (isLoginView || passwordInputVisible) {
+      logger.info("Active login view detected (URL contains /login or password input visible). Signing in directly...");
       await this.performSignIn(this.page, this.profile);
     } else if (await createAccountTrigger.isVisible({ timeout: 3000 }).catch(() => false)) {
       logger.info("Create Account trigger visible. Attempting account registration...");
@@ -188,9 +219,17 @@ export class WorkdayAuth {
         await this.performSignIn(this.page, this.profile);
       }
     } else {
-      // Fallback: check if sign in submit is available or just try performSignIn
-      logger.info("Defaulting to Sign In flow...");
-      await this.performSignIn(this.page, this.profile);
+      // Check if password input has appeared now
+      const pwdVisibleNow = await this.page.locator('input[type="password"]').first().isVisible({ timeout: 2000 }).catch(() => false);
+      if (pwdVisibleNow) {
+        logger.info("Password input detected on page. Signing in...");
+        await this.performSignIn(this.page, this.profile);
+      } else {
+        const debugDir = path.resolve(process.cwd(), "debug");
+        if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+        await this.page.screenshot({ path: path.join(debugDir, "auth_view_unrecognized.png"), fullPage: true }).catch(() => {});
+        throw new Error(`Unrecognized authentication view at URL: ${this.page.url()}. Neither Sign In nor Create Account fields were accessible.`);
+      }
     }
 
     // 2. Strictly Gate Wizard Entrance in authenticateOrResume:
