@@ -44,6 +44,54 @@ class Logger {
     const timestamp = getLocalFileTimestamp();
     this.logFile = path.join(this.logDir, `bot-run-${timestamp}.log`);
     this.traceFile = path.join(this.logDir, `trace-events-${timestamp}.jsonl`);
+
+    // Initialize files and automatically prune to keep only the latest 2 of each
+    try {
+      fs.writeFileSync(this.logFile, "", { flag: "a" });
+      fs.writeFileSync(this.traceFile, "", { flag: "a" });
+    } catch {}
+    this.cleanupOldLogs(2);
+  }
+
+  public cleanupOldLogs(maxKeep = 2) {
+    try {
+      if (!fs.existsSync(this.logDir)) return;
+      const entries = fs.readdirSync(this.logDir);
+
+      const logFiles = entries
+        .filter((file) => file.endsWith(".log"))
+        .map((file) => ({
+          name: file,
+          fullPath: path.join(this.logDir, file),
+          mtime: fs.statSync(path.join(this.logDir, file)).mtimeMs,
+        }))
+        .sort((a, b) => b.mtime - a.mtime || b.name.localeCompare(a.name));
+
+      if (logFiles.length > maxKeep) {
+        for (const file of logFiles.slice(maxKeep)) {
+          try {
+            fs.unlinkSync(file.fullPath);
+          } catch {}
+        }
+      }
+
+      const jsonlFiles = entries
+        .filter((file) => file.endsWith(".jsonl"))
+        .map((file) => ({
+          name: file,
+          fullPath: path.join(this.logDir, file),
+          mtime: fs.statSync(path.join(this.logDir, file)).mtimeMs,
+        }))
+        .sort((a, b) => b.mtime - a.mtime || b.name.localeCompare(a.name));
+
+      if (jsonlFiles.length > maxKeep) {
+        for (const file of jsonlFiles.slice(maxKeep)) {
+          try {
+            fs.unlinkSync(file.fullPath);
+          } catch {}
+        }
+      }
+    } catch {}
   }
 
   private write(level: LogLevel, message: string, meta?: unknown) {
