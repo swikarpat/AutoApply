@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { type BrowserContext, type Page } from "playwright";
 import { type Profile } from "../schema.js";
 import { WorkdayResolver } from "../resolvers/workday_resolvers.js";
-import { OtpListener } from "./otp_listener.js";
+import { OtpListener, fetchLatestOtp, getNextUid, fetchOtpSinceUid } from "./otp_listener.js";
 import { logger } from "../logger.js";
 
 export class AlreadyAppliedError extends Error {
@@ -97,6 +97,8 @@ export class WorkdayAuth {
         logger.info("Walmart contact details page reached. Inspecting form state...");
         const emailInput = this.page.locator('input[type="text"]:visible, input[type="email"]:visible').last();
         const continueBtn = this.page.locator('button:has-text("Continue")').first();
+        let minUid = 0;
+        let minTimestamp = Date.now();
 
         if (await emailInput.isVisible({ timeout: 3000 }).catch(() => false)) {
           logger.info(`Submitting candidate email: ${this.profile.personal_info.email}`);
@@ -107,6 +109,15 @@ export class WorkdayAuth {
             await termsCheckbox.check();
           }
 
+          // Record baseline min UID right before clicking continue:
+          try {
+            minUid = await getNextUid();
+            logger.info(`Inbox baseline uidNext: ${minUid}`);
+            minTimestamp = Date.now();
+          } catch (e) {
+            logger.warn(`Could not fetch baseline min UID: ${(e as Error).message}`);
+          }
+
           if (await continueBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
             logger.info("Clicking 'Continue' on Walmart contact details...");
             await continueBtn.click();
@@ -114,47 +125,130 @@ export class WorkdayAuth {
           }
         }
 
+        // If minUid was not recorded (e.g. view already opened), fetch it now
+        if (minUid === 0) {
+          try {
+            minUid = await getNextUid();
+            logger.info(`Inbox baseline uidNext: ${minUid}`);
+            minTimestamp = Date.now();
+          } catch {}
+        }
+
         // Check for verification code challenge
-        const otpListener = new OtpListener();
-        const otpInput = this.page
-          .locator('input[data-automation-id="verificationCode"], input[name="code"], input[autocomplete="one-time-code"], input[type="text"]')
+        const searchInput = this.page.locator('header input, [role="search"] input').first();
+        if (await searchInput.isVisible().catch(() => false)) {
+          await searchInput.fill("").catch(() => {});
+        }
+
+        const otpInputs = this.page.locator(
+          'div:has(> input[maxlength="1"]) input, [aria-label*="digit" i], [data-testid*="otp" i] input, input[inputmode="numeric"]'
+        );
+        const singleOtpInput = this.page
+          .locator('input[data-automation-id="verificationCode"], input[name="code"], input[autocomplete="one-time-code"]')
           .first();
 
         const pageText = (await this.page.textContent("body").catch(() => "")) || "";
+        const otpCount = await otpInputs.count().catch(() => 0);
         const isVerificationPage =
-          (await otpInput.isVisible({ timeout: 5000 }).catch(() => false)) ||
+          otpCount > 0 ||
+          (await singleOtpInput.isVisible({ timeout: 4000 }).catch(() => false)) ||
           /verification code|sent a verification code|enter the code/i.test(pageText);
 
         if (isVerificationPage) {
-          logger.step("Walmart email verification challenge detected. Resolving OTP...");
-          const otpCode = await otpListener.waitForOtp("walmart.com", 60000);
+          logger.step(`Walmart verification page opened. Resolving fresh OTP with UID >= ${minUid}...`);
+          let resent = false;
+          const otpCode = await fetchOtpSinceUid(
+            minUid,
+            60,
+            async (elapsed) => {
+              if (elapsed >= 15 && !resent) {
+                const resendBtn = this.page
+                  .locator('button:has-text("Resend"), a:has-text("Resend"), [data-testid*="resend" i]')
+                  .first();
+                if (await resendBtn.isVisible().catch(() => false)) {
+                  logger.step("15s elapsed without fresh OTP delivery. Clicking 'Resend code' to trigger dispatch...");
+                  resent = true;
+                  await resendBtn.click().catch(() => {});
+                }
+              }
+            },
+            minTimestamp
+          );
 
-          logger.info(`Filling verification code: ${otpCode}`);
-          await otpInput.fill(otpCode);
+          // Clear header search bar if populated
+          if (await searchInput.isVisible().catch(() => false)) {
+            await searchInput.fill("").catch(() => {});
+          }
+
+          // Fill the 6 boxes
+          const digitBoxes = this.page.locator(
+            'div:has(> input[maxlength="1"]) input, [aria-label*="digit" i], input[inputmode="numeric"]'
+          );
+          const digitCount = await digitBoxes.count().catch(() => 0);
+
+          if (digitCount >= 6) {
+            logger.info(`Populating 6 segmented OTP boxes with code: ${otpCode}`);
+            for (let i = 0; i < 6; i++) {
+              await digitBoxes.nth(i).click().catch(() => {});
+              await digitBoxes.nth(i).fill(otpCode[i]).catch(() => {});
+            }
+            // Trigger native keyboard events across boxes
+            await digitBoxes.first().click().catch(() => {});
+            await this.page.keyboard.type(otpCode, { delay: 120 });
+          } else if (otpCount > 0) {
+            await otpInputs.first().click().catch(() => {});
+            await this.page.keyboard.type(otpCode, { delay: 120 });
+          } else if (await singleOtpInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await singleOtpInput.fill(otpCode);
+          } else {
+            await this.page.keyboard.type(otpCode, { delay: 120 });
+          }
+
+          await this.page.waitForTimeout(1000);
 
           const verifyBtn = this.page
-            .getByRole("button", { name: /verify|submit|continue/i })
+            .locator('button[data-testid="otp-verify-button"], button[aria-label="Verify"]')
             .first();
+
+          logger.info("Awaiting verify button to become visible and enabled...");
+          await verifyBtn.waitFor({ state: "visible", timeout: 8000 }).catch(() => {});
+
+          await this.page
+            .waitForFunction(
+              (btn) => btn && !btn.hasAttribute("disabled") && !btn.classList.contains("disabled"),
+              await verifyBtn.elementHandle().catch(() => null),
+              { timeout: 5000 }
+            )
+            .catch(() => {});
 
           logger.info("Clicking Verify button...");
           await verifyBtn.click();
           await this.page.waitForLoadState("networkidle").catch(() => {});
-          await this.page.waitForTimeout(3000);
 
-          // Check if verification redirected to a new popup tab/page
-          const pages = this.context.pages();
-          if (pages.length > 1) {
-            const lastPage = pages[pages.length - 1];
-            if (lastPage !== this.page) {
-              logger.info("Detected new tab opened after verification. Switching context...");
-              this.page = lastPage;
-              this.resolver = new WorkdayResolver(this.page);
-              await this.page.waitForLoadState("domcontentloaded").catch(() => {});
-            }
+          // Safely check page switch
+          const activePages = this.context.pages().filter((p) => !p.isClosed());
+          if (activePages.length > 0 && (this.page.isClosed() || this.page !== activePages[activePages.length - 1])) {
+            logger.info("Detected active tab transition after verification. Switching context...");
+            this.page = activePages[activePages.length - 1];
+            this.resolver = new WorkdayResolver(this.page);
+            await this.page.waitForLoadState("domcontentloaded").catch(() => {});
           }
 
-          // Await navigation into application wizard
-          await this.waitForWizardArrival(30000);
+          // Await navigation away from contact-details or entrance into application wizard
+          if (!this.page.isClosed()) {
+            logger.info("Awaiting navigation away from contact-details or entrance into application wizard...");
+            await Promise.race([
+              this.page.waitForURL((url) => !url.href.includes("contact-details"), { timeout: 25000 }),
+              this.page.waitForSelector('[data-automation-id="progressBar"], input[name="legalNameSection.firstName"]', { timeout: 25000 })
+            ]).catch(() => {});
+          }
+
+          // If entrance into wizard is confirmed, save session and complete auth
+          if (!this.page.isClosed() && (await this.isInsideWizard())) {
+            logger.info("Confirmed entrance into application wizard! Saving session...");
+            await this.saveSessionState();
+            return;
+          }
         }
       }
     } else if (targetJobUrl.includes("jobs.nvidia.com") || this.page.url().includes("jobs.nvidia.com")) {
@@ -211,7 +305,9 @@ export class WorkdayAuth {
       }
     }
 
-    await this.page.waitForTimeout(2000);
+    if (!this.page.isClosed()) {
+      await this.page.waitForTimeout(2000);
+    }
 
     // If target URL is a Workday search query (e.g. ?q=JR...), click the matching job listing
     if (this.page.url().includes("?q=") || targetJobUrl.includes("?q=")) {

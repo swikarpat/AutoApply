@@ -77,13 +77,18 @@ export const EducationItemSchema = z.object({
   end_date: z.string().default(""),
 });
 
-export const EmailServiceSchema = z.object({
-  host: z.string().default("imap.gmail.com"),
-  port: z.number().default(993),
-  user: z.string().default(""),
-  app_password: z.string().default(""),
-  tls: z.boolean().default(true),
-}).optional();
+export const EmailServiceSchema = z
+  .object({
+    host: z.string().optional().default("imap.gmail.com"),
+    imap_host: z.string().optional(),
+    port: z.number().optional().default(993),
+    imap_port: z.number().optional(),
+    user: z.string().default(""),
+    app_password: z.string().default(""),
+    tls: z.boolean().default(true),
+  })
+  .passthrough()
+  .optional();
 
 export const ProfileSchema = z.object({
   workday_account: WorkdayAccountSchema.optional(),
