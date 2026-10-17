@@ -80,21 +80,29 @@ if (process.argv[1] && process.argv[1].endsWith("test_wizard.ts")) {
         process.exit(1);
       }
 
-      const role = jobs[0];
-      logger.step(`Selected fresh requisition: "${role.title}" (${role.reqId}) -> ${role.url}`);
-
-      // Pass canonical URL directly (e.g. https://jobs.nvidia.com/careers/job/893397632807)
-      targetJobUrl = role.url;
-
-      jobMetadata = {
-        company: role.company,
-        reqId: role.reqId,
-        title: role.title,
-        url: targetJobUrl,
-      };
+      for (const role of jobs) {
+        logger.step(`Testing requisition: "${role.title}" (${role.reqId}) -> ${role.url}`);
+        try {
+          await runPhase3Wizard(role.url, {
+            company: role.company,
+            reqId: role.reqId,
+            title: role.title,
+            url: role.url,
+          });
+          logger.step(`Successfully processed requisition ${role.reqId}. Exiting.`);
+          break;
+        } catch (err: any) {
+          if (err.message?.includes("REQUISITION_UNAVAILABLE") || err.message?.includes("job-error")) {
+            logger.warn(`Skipping unavailable role ${role.reqId} and advancing to next in queue...`);
+            tracker.recordApplication(role.company, role.reqId, `[UNAVAILABLE] ${role.title}`, role.url);
+            continue;
+          }
+          throw err;
+        }
+      }
+    } else {
+      await runPhase3Wizard(targetJobUrl, jobMetadata);
     }
-
-    await runPhase3Wizard(targetJobUrl, jobMetadata);
   })()
     .then(() => {
       process.exit(0);

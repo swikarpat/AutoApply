@@ -88,6 +88,10 @@ export class AppliedJobsTracker {
     logger.info(`Recorded application in tracker: [${company.toUpperCase()}] ${title} (${reqId})`);
   }
 
+  recordStale(company: string, reqId: string, reason = "JOB_ERROR"): void {
+    this.recordApplication(company, reqId, `[STALE] ${reason}`, "");
+  }
+
   getAppliedList(company?: string): AppliedJobRecord[] {
     if (company) {
       return this.data[company.toLowerCase()] || [];

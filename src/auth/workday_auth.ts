@@ -70,6 +70,11 @@ export class WorkdayAuth {
       await this.page.goto(targetJobUrl, { waitUntil: "networkidle", timeout: 45000 });
       await this.page.waitForTimeout(2000);
 
+      if (this.page.url().includes("/job-error")) {
+        logger.warn(`Walmart requisition is no longer accessible (redirected to /job-error). Target: ${targetJobUrl}`);
+        throw new Error(`REQUISITION_UNAVAILABLE: ${targetJobUrl}`);
+      }
+
       // Dismiss cookie banner if visible
       const cookieBtn = this.page
         .locator('#onetrust-accept-btn-handler, button:has-text("Accept All"), button:has-text("Accept")')
@@ -90,6 +95,29 @@ export class WorkdayAuth {
         await applyBtn.click();
         await this.page.waitForLoadState("networkidle").catch(() => {});
         await this.page.waitForTimeout(2000);
+      }
+
+      if (this.page.url().includes("/job-error")) {
+        logger.warn(`Walmart requisition is no longer accessible (redirected to /job-error). Target: ${targetJobUrl}`);
+        throw new Error(`REQUISITION_UNAVAILABLE: ${targetJobUrl}`);
+      }
+
+      // Check if session or direct navigation already reached apply form
+      const isAlreadyOnApplyForm =
+        this.page.url().includes("/jobs/apply") ||
+        (await this.page
+          .locator('form, [data-testid*="apply" i], input[name*="name" i], button:has-text("Upload")')
+          .first()
+          .isVisible({ timeout: 4000 })
+          .catch(() => false));
+
+      if (isAlreadyOnApplyForm) {
+        logger.info("[AUTH] Candidate already authenticated (session valid). Saving session state...");
+        const sessionDir = path.resolve(process.cwd(), "data", "sessions");
+        if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+        await this.page.context().storageState({ path: path.join(sessionDir, "workday_walmart.json") }).catch(() => {});
+        logger.step("[AUTH] Authentication handshake complete. Proceeding to Application Wizard Engine.");
+        return;
       }
 
       // Handle contact-details / email entry
@@ -361,10 +389,21 @@ export class WorkdayAuth {
       await this.page.waitForTimeout(2000);
     }
 
-    // 4. Strict check: are we already inside the wizard?
-    if (await this.isInsideWizard()) {
-      logger.info("Confirmed inside Workday Application Wizard! Skipping auth.");
-      await this.saveSessionState();
+    // 4. Check if authenticated into apply form or inside wizard
+    const isApplyForm =
+      this.page.url().includes("/jobs/apply") ||
+      (await this.page
+        .locator('form, [data-testid*="apply" i], input[name*="name" i], button:has-text("Upload")')
+        .first()
+        .isVisible({ timeout: 4000 })
+        .catch(() => false));
+
+    if (isApplyForm || (await this.isInsideWizard())) {
+      logger.info("[AUTH] Candidate successfully authenticated via OTP. Saving session state...");
+      const sessionDir = path.resolve(process.cwd(), "data", "sessions");
+      if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+      await this.page.context().storageState({ path: path.join(sessionDir, "workday_walmart.json") }).catch(() => {});
+      logger.step("[AUTH] Authentication handshake complete. Proceeding to Application Wizard Engine.");
       return;
     }
 
@@ -461,6 +500,23 @@ export class WorkdayAuth {
         logger.info("Password input detected on page. Signing in...");
         await this.performSignIn(this.page, this.profile);
       } else {
+        const isApplyFormFallback =
+          this.page.url().includes("/jobs/apply") ||
+          (await this.page
+            .locator('form, [data-testid*="apply" i], input[name*="name" i], button:has-text("Upload")')
+            .first()
+            .isVisible({ timeout: 4000 })
+            .catch(() => false));
+
+        if (isApplyFormFallback) {
+          logger.info("[AUTH] Candidate successfully authenticated via OTP. Saving session state...");
+          const sessionDir = path.resolve(process.cwd(), "data", "sessions");
+          if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+          await this.page.context().storageState({ path: path.join(sessionDir, "workday_walmart.json") }).catch(() => {});
+          logger.step("[AUTH] Authentication handshake complete. Proceeding to Application Wizard Engine.");
+          return;
+        }
+
         const debugDir = path.resolve(process.cwd(), "debug");
         if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
         await this.page.screenshot({ path: path.join(debugDir, "auth_view_unrecognized.png"), fullPage: true }).catch(() => {});

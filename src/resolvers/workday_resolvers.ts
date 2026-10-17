@@ -55,96 +55,87 @@ export class WorkdayResolver {
    */
   async selectCombobox(triggerLocator: Locator, targetOptionText: string): Promise<boolean> {
     logger.step(`WorkdayResolver.selectCombobox: Selecting "${targetOptionText}"`);
-    await triggerLocator.waitFor({ state: "visible", timeout: 10000 });
-    await triggerLocator.scrollIntoViewIfNeeded();
-
-    // Click trigger to expand popup
-    await triggerLocator.click();
-    await this.page.waitForTimeout(200);
-
-    // Locate floating popup listbox at page root level
-    const popupListbox = this.page
-      .locator('[role="listbox"]')
-      .or(this.page.locator('div[data-automation-id="popup"]'))
-      .or(this.page.locator('[data-automation-id="select-options"]'))
-      .first();
-
     try {
-      await popupListbox.waitFor({ state: "visible", timeout: 7000 });
-    } catch {
-      logger.warn("Popup listbox did not appear on primary click. Retrying trigger click...");
-      await triggerLocator.click();
-      await popupListbox.waitFor({ state: "visible", timeout: 5000 });
-    }
+      await triggerLocator.waitFor({ state: "visible", timeout: 8000 });
+      await triggerLocator.scrollIntoViewIfNeeded();
 
-    // Try finding direct matching option within visible list
-    const optionsLocator = popupListbox.locator('[role="option"]');
-    const optionCount = await optionsLocator.count();
-    logger.debug(`Found ${optionCount} options in floating listbox`);
-
-    let selected = false;
-
-    // Direct text search
-    const matchingOption = popupListbox
-      .locator('[role="option"]')
-      .filter({ hasText: new RegExp(`^\\s*${this.escapeRegex(targetOptionText)}\\s*$`, "i") })
-      .or(
-        popupListbox
-          .locator('[role="option"]')
-          .filter({ hasText: new RegExp(this.escapeRegex(targetOptionText), "i") })
-      )
-      .first();
-
-    if (await matchingOption.isVisible().catch(() => false)) {
-      logger.debug(`Clicking visible matching option for "${targetOptionText}"`);
-      await matchingOption.scrollIntoViewIfNeeded();
-      await matchingOption.click();
-      selected = true;
-    } else {
-      // If list is large or virtualized, check if there is an embedded search input
-      const searchInput = popupListbox.locator('input[type="text"], input[role="searchbox"]').first();
-      if (await searchInput.isVisible().catch(() => false)) {
-        logger.debug(`Typing into combobox search filter: "${targetOptionText}"`);
-        await searchInput.fill(targetOptionText);
-        await this.page.waitForTimeout(300);
-      } else {
-        // Fallback: keyboard navigation on active element
-        logger.debug(`Using keyboard typing for virtualized combobox: "${targetOptionText}"`);
-        await this.page.keyboard.type(targetOptionText, { delay: 50 });
-        await this.page.waitForTimeout(250);
+      // 1. Check if the element itself or an immediate child is a native <select>
+      const tagName = await triggerLocator.evaluate((el) => el.tagName.toLowerCase()).catch(() => "");
+      if (tagName === "select") {
+        logger.info(`selectCombobox: Direct native <select> detected. Setting value for "${targetOptionText}"...`);
+        await triggerLocator.selectOption({ label: targetOptionText }).catch(async () => {
+          const matchingVal = await triggerLocator
+            .locator("option")
+            .filter({ hasText: new RegExp(this.escapeRegex(targetOptionText), "i") })
+            .first()
+            .getAttribute("value");
+          if (matchingVal) await triggerLocator.selectOption(matchingVal);
+        });
+        await triggerLocator.evaluate((el) => {
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          el.dispatchEvent(new Event("blur", { bubbles: true }));
+        }).catch(() => {});
+        return true;
       }
 
-      // Check if option is now visible
-      const filteredOption = popupListbox
-        .locator('[role="option"]')
-        .filter({ hasText: new RegExp(this.escapeRegex(targetOptionText), "i") })
+      const nestedSelect = triggerLocator.locator("select").first();
+      if ((await nestedSelect.count()) > 0) {
+        logger.info(`selectCombobox: Nested native <select> detected. Setting value for "${targetOptionText}"...`);
+        await nestedSelect.selectOption({ label: targetOptionText }).catch(async () => {
+          const matchingVal = await nestedSelect
+            .locator("option")
+            .filter({ hasText: new RegExp(this.escapeRegex(targetOptionText), "i") })
+            .first()
+            .getAttribute("value");
+          if (matchingVal) await nestedSelect.selectOption(matchingVal);
+        });
+        await nestedSelect.evaluate((el) => {
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          el.dispatchEvent(new Event("blur", { bubbles: true }));
+        }).catch(() => {});
+        return true;
+      }
+
+      // 2. Custom ARIA / Listbox Combobox
+      await triggerLocator.click({ force: true });
+      await this.page.waitForTimeout(300);
+
+      const popupListbox = this.page
+        .locator(
+          '[role="listbox"], [role="menu"], div[data-automation-id="popup"], [data-automation-id="select-options"], ul[role="listbox"], div[class*="options" i]'
+        )
         .first();
 
-      if (await filteredOption.isVisible().catch(() => false)) {
-        await filteredOption.click();
-        selected = true;
-      } else {
-        // Press Enter as fallback selection
-        logger.debug("Pressing ArrowDown and Enter to select highlighted item");
-        await this.page.keyboard.press("ArrowDown");
-        await this.page.waitForTimeout(100);
-        await this.page.keyboard.press("Enter");
-        selected = true;
+      const listboxFound = await popupListbox
+        .waitFor({ state: "visible", timeout: 3500 })
+        .then(() => true)
+        .catch(() => false);
+
+      if (listboxFound) {
+        const directOption = popupListbox
+          .locator('[role="option"], [role="menuitem"], li, button')
+          .filter({ hasText: new RegExp(`^\\s*${this.escapeRegex(targetOptionText)}\\s*$`, "i") })
+          .or(
+            popupListbox
+              .locator('[role="option"], [role="menuitem"], li, button')
+              .filter({ hasText: new RegExp(this.escapeRegex(targetOptionText), "i") })
+          )
+          .first();
+
+        if (await directOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await directOption.click();
+          return true;
+        }
       }
+
+      // 3. Fallback: Keyboard typing into active element
+      await this.page.keyboard.type(targetOptionText, { delay: 60 });
+      await this.page.keyboard.press("Enter");
+      return true;
+    } catch (err: any) {
+      logger.warn(`selectCombobox non-fatal notice: Failed selecting "${targetOptionText}": ${err.message}`);
+      return false;
     }
-
-    // Trigger blur on trigger element to notify framework
-    await triggerLocator.evaluate((el) => {
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-      el.dispatchEvent(new Event("blur", { bubbles: true }));
-    }).catch(() => {});
-
-    await this.page.waitForTimeout(200);
-
-    // Verify selection in trigger text or value
-    const triggerText = (await triggerLocator.innerText().catch(() => "")) || "";
-    logger.info(`WorkdayResolver.selectCombobox result: trigger currently shows "${triggerText.trim()}"`);
-    return selected;
   }
 
   /**

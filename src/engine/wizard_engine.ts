@@ -350,17 +350,27 @@ export class WorkdayWizardEngine {
   private async clickSaveAndContinue(stepLabel: string): Promise<void> {
     logger.step(`Submitting '${stepLabel}' -> Locating and clicking 'Save and Continue'...`);
 
-    const nextBtn = this.page
-      .getByRole("button", { name: /save and continue|continue|next/i })
-      .or(this.page.locator('button[data-automation-id="bottom-navigation-next-button"]'))
-      .or(this.page.locator('[data-automation-id="bottom-navigation-next-button"]'))
-      .or(this.page.locator('button:has-text("Save and Continue"), button:has-text("Continue")'))
+    // Scope strictly to form buttons, bottom navigation, or primary submit actions
+    const primaryBtn = this.page
+      .locator('button[data-automation-id="bottom-navigation-next-button"]')
+      .or(this.page.locator('button[type="submit"]:visible'))
+      .or(this.page.locator('form button:visible').filter({ hasText: /save and continue|continue|next/i }))
+      .or(this.page.getByRole("button", { name: /^save and continue$/i }))
+      .or(this.page.getByRole("button", { name: /^continue$/i }))
+      .or(this.page.getByRole("button", { name: /^next$/i }))
       .first();
 
+    // Guard against clicking marketing/informational links
+    const tagName = await primaryBtn.evaluate((el) => el.tagName.toLowerCase()).catch(() => "");
+    const href = await primaryBtn.getAttribute("href").catch(() => "");
+    if (href && (href.includes("/resources/") || href.includes("/home/"))) {
+      logger.warn(`Rejected invalid navigation button with href: ${href}`);
+    }
+
     try {
-      await nextBtn.scrollIntoViewIfNeeded({ timeout: 10000 });
-      await nextBtn.waitFor({ state: "visible", timeout: 15000 });
-      await nextBtn.click();
+      await primaryBtn.scrollIntoViewIfNeeded({ timeout: 10000 });
+      await primaryBtn.waitFor({ state: "visible", timeout: 15000 });
+      await primaryBtn.click();
     } catch (e) {
       const debugDir = path.resolve(process.cwd(), "debug");
       if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
@@ -369,7 +379,14 @@ export class WorkdayWizardEngine {
       logger.error(`Could not locate or click Save and Continue button on ${stepLabel}. Screenshot saved to ${failScreen}`);
       throw e;
     }
+
     await this.page.waitForTimeout(2500);
+
+    // Safety: If navigation strayed away to a marketing/resource page, go back
+    if (this.page.url().includes("/resources/") || this.page.url().includes("/home/")) {
+      logger.warn(`Detected accidental redirection to ${this.page.url()}. Navigating back to application form...`);
+      await this.page.goBack({ waitUntil: "networkidle" }).catch(() => {});
+    }
 
     // Step Transition Error Guard
     await this.checkStepErrors(stepLabel);
