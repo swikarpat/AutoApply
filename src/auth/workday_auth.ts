@@ -175,13 +175,33 @@ export class WorkdayAuth {
 
     // 3. Post-Auth Gate:
     // After performSignIn is submitted, wait for navigation into the wizard
-    logger.step("Post-Auth Gate: Waiting for entrance into application wizard...");
-    await this.page
-      .locator('[data-automation-id="progressBar"], [data-automation-id="page-header"], h2:has-text("My Information")')
-      .first()
-      .waitFor({ state: "visible", timeout: 30000 });
+    logger.step("Post-Auth Gate: Waiting for entrance into Step 1 form...");
 
-    logger.info("Authentication confirmed. Entered wizard.");
+    const step1Field = this.page
+      .locator('input[data-automation-id="legalNameSection_firstName"], [data-automation-id="addressSection_addressLine1"]')
+      .first();
+
+    try {
+      await step1Field.waitFor({ state: "visible", timeout: 30000 });
+    } catch (e) {
+      const debugDir = path.resolve(process.cwd(), "debug");
+      if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+      const postAuthScreen = path.join(debugDir, "post_auth_failure.png");
+      await this.page.screenshot({ path: postAuthScreen, fullPage: true }).catch(() => {});
+      logger.error(`Post-Auth Gate timed out waiting for Step 1 form. Current URL: ${this.page.url()}. Screenshot saved to: ${postAuthScreen}`);
+
+      // Check if redirected to candidate userHome with a draft or apply continue button
+      const continueDraftBtn = this.page.getByRole("button", { name: /continue application|start application|continue/i }).first();
+      if (await continueDraftBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        logger.info("Detected 'Continue Application' on candidate home. Clicking to resume apply flow...");
+        await continueDraftBtn.click();
+        await step1Field.waitFor({ state: "visible", timeout: 15000 });
+      } else {
+        throw e;
+      }
+    }
+
+    logger.info("Authentication verified. Landed inside Step 1 (My Information) form.");
 
     // Save authenticated session to data/sessions/workday_nvidia.json
     await this.saveSessionState();
@@ -250,6 +270,7 @@ export class WorkdayAuth {
    * - Locate password input: page.locator('input[type="password"], input[data-automation-id="password"], input[name="password"]').first().
    * - Clear and fill with profile.workday_account.password.
    * - Locate and click the Sign In submit button: page.locator('button[data-automation-id="signInSubmitButton"], button[type="submit"]:has-text("Sign In")').first().click().
+   * - Polls for error banner after clicking submit.
    */
   async performSignIn(page: Page, profile: Profile): Promise<void> {
     logger.step("WorkdayAuth: Performing Sign In...");
@@ -291,11 +312,31 @@ export class WorkdayAuth {
     } else {
       await signInSubmit.click({ force: true });
     }
+
+    // Explicit Error Banner Detection on Sign In:
+    // Poll for up to 5 seconds for any authentication error alert
+    const errorBanner = page.locator(
+      '[data-automation-id="errorMessage"], div[role="alert"]:has-text("wrong email address or password"), div:has-text("account might be locked")'
+    ).first();
+
+    const start = Date.now();
+    while (Date.now() - start < 5000) {
+      if (await errorBanner.isVisible().catch(() => false)) {
+        const errText = await errorBanner.innerText().catch(() => "");
+        logger.error(`Workday rejected credentials: ${errText.trim()}`);
+        const debugDir = path.resolve(process.cwd(), "debug");
+        if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+        const errScreenshot = path.join(debugDir, "login_credential_error.png");
+        await page.screenshot({ path: errScreenshot, fullPage: true }).catch(() => {});
+        throw new Error("Workday authentication rejected: Invalid credentials or account locked.");
+      }
+      await page.waitForTimeout(500);
+    }
   }
 
   /**
    * Strictly defines whether we are inside the wizard using exclusive DOM elements.
-   * Does NOT rely on URL alone.
+   * Does NOT rely on URL alone or generic breadcrumb text.
    */
   async isInsideWizard(): Promise<boolean> {
     // An active login/registration view is present if ANY of these exist:
@@ -308,24 +349,21 @@ export class WorkdayAuth {
       return false;
     }
 
-    // Inside wizard strictly by presence of wizard-exclusive DOM elements:
-    const hasProgressBar = await this.page.locator('[data-automation-id="progressBar"]').first().isVisible().catch(() => false);
-    const hasMyInformationHeading = await this.page.getByRole("heading", { name: /my information/i }).first().isVisible().catch(() => false);
+    // Inside wizard strictly by presence of wizard Step 1 form fields:
     const hasLegalNameSection = await this.page
-      .locator('[data-automation-id="legalNameSection_firstName"]')
-      .or(this.page.getByLabel(/legal name.*first/i))
+      .locator('input[data-automation-id="legalNameSection_firstName"], [data-automation-id="addressSection_addressLine1"]')
       .first()
       .isVisible()
       .catch(() => false);
 
-    return hasProgressBar || hasMyInformationHeading || hasLegalNameSection;
+    return hasLegalNameSection;
   }
 
   private async waitForWizardArrival(timeoutMs: number = 30000): Promise<boolean> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       if (await this.isInsideWizard()) {
-        logger.info("Confirmed entrance into Workday Application Wizard!");
+        logger.info("Confirmed entrance into Step 1 form!");
         return true;
       }
       await this.page.waitForTimeout(1000);

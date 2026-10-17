@@ -3,6 +3,34 @@ import * as path from "node:path";
 
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR" | "STEP";
 
+function getLocalFileTimestamp(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  const hoursStr = String(hours).padStart(2, "0");
+  return `${year}-${month}-${day}T${hoursStr}-${minutes}-${seconds}-${ampm}`;
+}
+
+function getLocalLogTime(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  const hoursStr = String(hours).padStart(2, "0");
+  return `${year}-${month}-${day} ${hoursStr}:${minutes}:${seconds} ${ampm}`;
+}
+
 class Logger {
   private logDir: string;
   private logFile: string;
@@ -13,13 +41,13 @@ class Logger {
     if (!fs.existsSync(this.logDir)) {
       fs.mkdirSync(this.logDir, { recursive: true });
     }
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const timestamp = getLocalFileTimestamp();
     this.logFile = path.join(this.logDir, `bot-run-${timestamp}.log`);
     this.traceFile = path.join(this.logDir, `trace-events-${timestamp}.jsonl`);
   }
 
   private write(level: LogLevel, message: string, meta?: unknown) {
-    const time = new Date().toISOString();
+    const time = getLocalLogTime();
     const metaStr = meta ? ` | meta: ${JSON.stringify(meta)}` : "";
     const logLine = `[${time}] [${level.padEnd(5)}] ${message}${metaStr}`;
 
